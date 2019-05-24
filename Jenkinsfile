@@ -1,59 +1,127 @@
-properties(
-  [
-    disableConcurrentBuilds()
-  ]
-)
+#!/usr/bin/env groovy
 
-// https://issues.jenkins-ci.org/browse/JENKINS-33511
-def set_workspace() {
-  if(env.WORKSPACE == null) {
-    env.WORKSPACE = WORKSPACE = pwd()
-  }
-}
+node {
+    checkout scm
+    def buildlib = load("pipeline-scripts/buildlib.groovy")
+    def commonlib = buildlib.commonlib
 
-node('openshift-build-1') {
-  try {
-    timeout(time: 30, unit: 'MINUTES') {
-      deleteDir()
-      set_workspace()
-      dir('aos-cd-jobs') {
-        stage('clone') {
-          checkout scm
-          sh 'git checkout master'
-        }
-        stage('run') {
-          final url = sh(
-            returnStdout: true,
-            script: 'git config remote.origin.url')
-          if(!(url =~ /^[-\w]+@[-\w]+(\.[-\w]+)*:/)) {
-            error('This job uses ssh keys for auth, please use an ssh url')
-          }
-          def prune = true, key = 'openshift-bot'
-          if(url.trim() != 'git@github.com:openshift/aos-cd-jobs.git') {
-            prune = false
-            key = "${(url =~ /.*:([^\/]+)/)[0][1]}-aos-cd-bot"
-          }
-          sshagent([key]) {
-            sh """\
-virtualenv ../env/
-. ../env/bin/activate
-pip install gitpython
-${prune ? 'python -m aos_cd_jobs.pruner' : 'echo Fork, skipping pruner'}
-python -m aos_cd_jobs.updater
-"""
-          }
-        }
-      }
+    // Expose properties for a parameterized build
+    properties(
+        [
+            [
+                $class: 'ParametersDefinitionProperty',
+                parameterDefinitions: [
+                    [
+                        name: 'NAME',
+                        description: 'Release name (e.g. 4.1.0-rc.0)',
+                        $class: 'hudson.model.StringParameterDefinition',
+                        defaultValue: ""
+                    ],
+                    [
+                        name: 'DRY_RUN',
+                        description: 'Only do dry run test and exit.',
+                        $class: 'BooleanParameterDefinition',
+                        defaultValue: false
+                    ],
+                    [
+                        name: 'ENV',
+                        description: 'Which environment to sign in',
+                        $class: 'hudson.model.ChoiceParameterDefinition',
+                        choices: [
+                            "stage",
+                            "prod",
+                        ].join("\n"),
+                        defaultValue: "stage"
+                    ],
+                    [
+                        name: 'KEY_NAME',
+                        description: 'Which key to sign with (if ENV==stage, everything becomes "test")',
+                        $class: 'hudson.model.ChoiceParameterDefinition',
+                        choices: [
+                            "test",
+                            "beta2",
+			    "redhatrelease2",
+                        ].join("\n"),
+                        defaultValue: "test"
+                    ],
+                    commonlib.mockParam(),
+                ]
+            ],
+            disableConcurrentBuilds()
+        ]
+    )
+
+    commonlib.checkMock()
+    buildlib.cleanWorkdir(env.WORKSPACE)
+
+    // must be able to access remote registry for verification
+    buildlib.registry_quay_dev_login()
+
+    stage('sign-artifacts') {
+	def noop = params.DRY_RUN ? " --noop" : " "
+
+	wrap([$class: 'BuildUser']) {
+	    echo "Submitting signing requests as user: ${env.BUILD_USER}"
+
+	    withCredentials([file(credentialsId: 'msg-openshift-art-signatory-prod.crt', variable: 'busCertificate'),
+			     file(credentialsId: 'msg-openshift-art-signatory-prod.key', variable: 'busKey')]) {
+		echo "Authenticating with bus cert/key at: ${busCertificate}/${busKey}"
+		// Following line is for debugging when we're
+		// initially testing this
+		sh 'ls -l ${busCertificate} ${busKey}'
+
+		// ######################################################################
+		def baseUmbParams = buildlib.cleanWhitespace("""
+                    --requestor ${env.BUILD_USER} --sig-keyname ${params.KEY_NAME}
+                    --release-name ${params.NAME} --client-cert ${busCertificate}
+                    --client-key ${busKey} --env ${params.ENV}
+                    ${noop}
+                """)
+
+		// ######################################################################
+		def openshiftJsonSignParams = buildlib.cleanWhitespace("""
+		    ${baseUmbParams}
+		    --product openshift
+		    --request-id 'openshift-json-digest ${env.BUILD_URL}'
+                """)
+
+		echo "Submitting OpenShift Payload JSON claim signature request"
+		res = commonlib.shell(
+		    returnAll: true,
+		    script: "./umb_producer.py json-digest ${openshiftJsonSignParams}"
+		)
+
+		// ######################################################################
+		def openshiftSha256SignParams = buildlib.cleanWhitespace("""
+                    ${baseUmbParams}
+                    --product openshift
+                    --request-id 'openshift-message-digest ${env.BUILD_URL}'
+                """)
+
+		echo "Submitting OpenShift sha256 message-digest signature request"
+		res = commonlib.shell(
+		    returnAll: true,
+		    script: "./umb_producer.py message-digest ${openshiftSha256SignParams}"
+		)
+
+		// Comment this out for now. I don't think we even
+		// have a sha256sum.txt file on the rhcos mirror
+		// endpoint right now. Also, that url structure isn't
+		// what we're going for when we hit GA.
+		//
+		// ######################################################################
+		// def rhcosSha256SignParams = buildlib.cleanWhitespace("""
+                //     ${baseUmbParams}
+                //     --product rhcos
+                //     --request-id 'rhcos-message-digest ${env.BUILD_URL}'
+                // """)
+
+		// echo "Submitting RHCOS sha256 message-digest signature request"
+		// res = commonlib.shell(
+		//     returnAll: true,
+		//     script: "./umb_producer.py message-digest ${rhcosSha256SignParams}"
+		// )
+	    }
+	}
     }
-  } catch(err) {
-    mail(
-      to: 'tbielawa@redhat.com, jupierce@redhat.com',
-      from: "aos-cicd@redhat.com",
-      subject: 'aos-cd-jobs-branches job: error',
-      body: """\
-Encoutered an error while running the aos-cd-jobs-branches job: ${err}\n\n
-Jenkins job: ${env.BUILD_URL}
-""")
-    throw err
-  }
 }

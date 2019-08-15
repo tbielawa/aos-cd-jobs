@@ -6,6 +6,7 @@ set -euxo pipefail
 VERSION=$1
 ERRATA=$2
 CONF=`mktemp`
+echo "Making new signed compose for OCP ${VERSION} using Errata Whitelist: '${ERRATA}'"
 
 echo "Fetching default errata-puddle config file for ${VERSION}"
 wget https://raw.githubusercontent.com/openshift/aos-cd-jobs/master/build-scripts/puddle-conf/errata-puddle-${VERSION}-signed.conf -O $CONF

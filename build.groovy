@@ -67,8 +67,6 @@ def signedComposeNewCompose() {
     echo "Puddle a signed compose including the errata"
 
     def stderr, errataList, res = buildlib.elliott("${elliottOpts} puddle-advisories", [capture: true])
-
-    def errataList = buildlib.getErrataWhitelist(params.BUILD_VERSION)
     buildlib.invoke_on_rcm_guest("call_puddle_advisory.sh", params.BUILD_VERSION, errataList)
 
     echo "View the package list here: http://download.lab.bos.redhat.com/rcm-guest/puddles/RHAOS/AtomicOpenShift/${params.BUILD_VERSION}/latest/x86_64/os/Packages/"

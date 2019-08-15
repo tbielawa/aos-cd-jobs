@@ -11,11 +11,11 @@ def initialize(advisory) {
 }
 
 def signedComposeStateNewFiles() {
-    buildlib.elliott "${elliottOpts} change-state --state NEW_FILES ${advisoryOpt}"
+    buildlib.elliott("${elliottOpts} change-state --state NEW_FILES ${advisoryOpt}")
 }
 
 def signedComposeAttachBuilds() {
-    buildlib.elliott "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
+    buildlib.elliott("${elliottOpts} find-builds --kind rpm ${advisoryOpt}")
 }
 
 def signedComposeRpmdiffsRan(advisory) {
@@ -56,15 +56,17 @@ def signedComposeRpmdiffsResolved(advisory) {
 }
 
 def signedComposeStateQE() {
-    buildlib.elliott "${elliottOpts} change-state --state QE ${advisoryOpt}"
+    buildlib.elliott("${elliottOpts} change-state --state QE ${advisoryOpt}")
 }
 
 def signedComposeRpmsSigned() {
-    buildlib.elliott "${elliottOpts} poll-signed ${adisoryOpt}"
+    buildlib.elliott("${elliottOpts} poll-signed ${adisoryOpt}")
 }
 
 def signedComposeNewCompose() {
     echo "Puddle a signed compose including the errata"
+
+    def stderr, errataList, res = buildlib.elliott("${elliottOpts} puddle-advisories", [capture: true])
 
     def errataList = buildlib.getErrataWhitelist(params.BUILD_VERSION)
     buildlib.invoke_on_rcm_guest("call_puddle_advisory.sh", params.BUILD_VERSION, errataList)

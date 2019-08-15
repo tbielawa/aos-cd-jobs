@@ -51,7 +51,8 @@ node {
         ]
     )
 
-    def advisory = buildlib.getDefaultAdvisoryID(params.BULID_VERSION, 'rpm')
+    def stderr, advisory, res = buildlib.elliott("--group=openshift-${params.BUILD_VERSION} get --use-default-advisory rpm --id-only", [capture: true])
+
 
     stage("Initialize") {
 	buildlib.elliott "--version"

@@ -45,12 +45,12 @@ node {
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false
                     ],
-                    [
-                        name: 'ONLY_RUN_PUDDLE',
-                        description: 'Do not run any stages other than the puddle stage',
-                        $class: 'BooleanParameterDefinition',
-                        defaultValue: false
-                    ],
+                    // [
+                    //     name: 'ONLY_RUN_PUDDLE',
+                    //     description: 'Do not run any stages other than the puddle stage',
+                    //     $class: 'BooleanParameterDefinition',
+                    //     defaultValue: false
+                    // ],
                     [
                         name: 'DRY_RUN',
                         description: 'Do not update the puddle. Just show what would have happened',
@@ -67,6 +67,8 @@ node {
 
     commonlib.checkMock()
     def advisory = buildlib.elliott("--group=openshift-${params.BUILD_VERSION} get --use-default-advisory rpm --id-only", [capture: true]).trim()
+    // Don't run majority of steps, such as if no builds to attach
+    def skipBusiness = false
 
     stage("Initialize") {
 	buildlib.elliott "--version"
@@ -76,30 +78,18 @@ node {
     }
 
     if ( build.thereAreBuildsToAttach() ) {
-	echo("Builds could be attached, must run all steps")
+	echo("Builds to attach, must run all steps")
+	skipBusiness = false
     } else {
-	echo("Nothing to attach, can skip steps")
+	echo("Nothing to attach, will skip steps")
+	skipBusiness = true
     }
-
-    error("Early abort")
-
 
     try {
 	sshagent(["openshift-bot"]) {
-	    // Users have the choice to skip these steps
-	    if ( !params.ONLY_RUN_PUDDLE ) {
-		/* CHECK THAT ADVISORY HAS BUILDS
-		 If the working advisory has no builds, then it's probably a fresh one.
-		 We don't need to change state, or attach builds, resolve rpm diffs, or wait for signing.
-		 BUT it's possible there is another advisory that is almost-released (past the QE state)
-
-		 If there is an almost-released advisory we can be sure it has builds attached to it.
-		 */
+	    if ( !skipBusiness ) {
 		stage("Advisory is NEW_FILES") { build.signedComposeStateNewFiles() }
 		stage("Attach builds") { build.signedComposeAttachBuilds() }
-
-		// If the advisory has unsigned builds then we need to check RPM Diffs
-
 		stage("RPM diffs ran") { build.signedComposeRpmdiffsRan(advisory) }
 		stage("RPM diffs resolved") { build.signedComposeRpmdiffsResolved(advisory) }
 		stage("Advisory is QE") { build.signedComposeStateQE() }

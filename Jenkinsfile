@@ -75,6 +75,15 @@ node {
 	build.initialize(advisory)
     }
 
+    if ( build.thereAreBuildsToAttach() ) {
+	echo("Builds could be attached, must run all steps")
+    } else {
+	echo("Nothing to attach, can skip steps")
+    }
+
+    error("Early abort")
+
+
     try {
 	sshagent(["openshift-bot"]) {
 	    // Users have the choice to skip these steps

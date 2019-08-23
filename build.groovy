@@ -43,7 +43,8 @@ def signedComposeAttachBuilds() {
 
     if ( cmd != '') {
 	try {
-	    buildlib.elliott(cmd)
+	    def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
+
 	} catch (err) {
 	    echo("Problem running elliott")
 	    error("Could not process attach builds command")
@@ -198,6 +199,17 @@ in-progress compose job and choose the CONTINUE option.
 
 // ######################################################################
 // Some utility functions
+
+// Check if there are any builds that *need* or *can* be
+// attached.
+//
+// XXX: DOESN'T CONSIDER MANUALLY PROVIDED BUILDS YET
+def thereAreBuildsToAttach() {
+    def cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
+    def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
+    echo("Attach result: ${attachResult}")
+    return attachResult != "No builds needed to be attached"
+}
 
 // Check if builds are signed
 def buildsSigned(String forAdvisory) {

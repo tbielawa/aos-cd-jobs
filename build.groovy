@@ -12,7 +12,7 @@ def initialize(advisory) {
     buildlib.cleanWorkdir(workdir)
     elliottOpts += "--group=openshift-${params.BUILD_VERSION}"
     echo "${currentBuild.displayName}: https://errata.devel.redhat.com/advisory/${advisory}"
-    errataList += buildlib.elliott("${elliottOpts} puddle-advisories", [capture: true]).trim()
+    errataList += buildlib.elliott("${elliottOpts} puddle-advisories", [capture: true]).trim().replace(' ', '')
     currentBuild.description = "Signed puddle for advisory https://errata.devel.redhat.com/advisory/${advisory}"
     currentBuild.description += "\nErrata whitelist: ${errataList}"
 }

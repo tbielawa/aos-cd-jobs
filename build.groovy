@@ -208,7 +208,11 @@ def thereAreBuildsToAttach() {
     def cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
     def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
     echo("Attach result: ${attachResult}")
-    return attachResult != "No builds needed to be attached"
+    if ( attachResult == "No builds needed to be attached" ) {
+	return true
+    } else {
+	return false
+    }
 }
 
 // Check if builds are signed

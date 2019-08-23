@@ -9,11 +9,10 @@ CONF=`mktemp`
 echo "Making new signed compose for OCP ${VERSION} using Errata Whitelist: '${ERRATA}'"
 
 echo "Fetching default errata-puddle config file for ${VERSION}"
-# wget https://raw.githubusercontent.com/openshift/aos-cd-jobs/master/build-scripts/puddle-conf/errata-puddle-${VERSION}-signed.conf -O $CONF
-wget https://raw.githubusercontent.com/openshift/aos-cd-jobs/master/build-scripts/puddle-conf/atomic_openshift-${VERSION}.conf -O $CONF
+wget https://raw.githubusercontent.com/openshift/aos-cd-jobs/master/build-scripts/puddle-conf/errata-puddle-${VERSION}-signed.conf -O $CONF
 
-# echo "Substituting in errata_whitelist with provided value: ${ERRATA}"
-# sed -i -r "s|errata_whitelist.*|errata_whitelist = ${ERRATA}|" $CONF
+echo "Substituting in errata_whitelist with provided value: ${ERRATA}"
+sed -i -r "s|errata_whitelist.*|errata_whitelist = ${ERRATA}|" $CONF
 
 echo "Running puddle command"
 puddle $CONF -b -d -n

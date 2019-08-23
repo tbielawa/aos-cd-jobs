@@ -104,6 +104,8 @@ def signedComposeNewCompose() {
 	currentBuild.description += "\nDry-run: Compose not actually built"
 	echo("Skipping running puddle. Would have used whitelist: ${errataList}")
     } else {
+	commonlib.shell("klist -f")
+	commonlib.shell("ssh ocp-build@rcm-guest.app.eng.bos.redhat.com -- klist -f")
 	def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
 	def result = commonlib.shell(
 	    script: cmd,
@@ -114,7 +116,8 @@ def signedComposeNewCompose() {
 	    echo("View the package list here: ${puddleURL}")
 	    mailForSuccess()
 	} else {
-	    mailForFailure()
+	    mailForFailure(result.combined)
+	    error("Error running puddle command")
 	}
     }
 }
@@ -146,18 +149,17 @@ ${puddleMeta.changeLog}
     )
 }
 
-def mailForFailure() {
-    def puddleMeta = analyzePuddleLogs()
+// @param <String> err: Error message from puddle command
+def mailForFailure(err) {
     def failureMessage = """Error creating new signed compose OpenShift ${params.BUILD_VERSION}
 
   Errata Whitelist included advisories: ${errataList}
-  Puddle URL: ${puddleMeta.newPuddle}
   Jenkins Console Log: ${commonlib.buildURL('console')}
 
-Puddle Changelog:
 ######################################################################
-${puddleMeta.changeLog}
+${err}
 ######################################################################
+
 """
 
     echo("Mailing failure message: ")

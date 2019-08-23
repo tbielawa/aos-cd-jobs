@@ -105,7 +105,7 @@ def signedComposeNewCompose() {
 	echo("Skipping running puddle. Would have used whitelist: ${errataList}")
     } else {
 	commonlib.shell("klist -f")
-	commonlib.shell("ssh -o 'GSSAPIDelegateCredentials yes' ocp-build@rcm-guest.app.eng.bos.redhat.com -- klist -f")
+	// commonlib.shell("ssh -o 'GSSAPIDelegateCredentials yes' ocp-build@rcm-guest.app.eng.bos.redhat.com -- klist -f")
 	def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
 	def result = commonlib.shell(
 	    script: cmd,

@@ -101,6 +101,7 @@ node {
 		stage("New el8 compose") { build.signedComposeNewComposeEl8() }
 	    }
 	}
+	build.mailForSuccess()
     } catch (err) {
         currentBuild.description += "\n-----------------\n\n${err}\n-----------------\n"
 	currentBuild.result = "FAILURE"
@@ -125,8 +126,8 @@ View the build artifacts and console output on Jenkins:
     } finally {
 	commonlib.safeArchiveArtifacts([
 		'email/*',
-		"${build.workdir}/changelog.log",
-		"${build.workdir}/puddle.log",
+		"${build.workdir}/changelog*.log",
+		"${build.workdir}/puddle*.log",
 	    ]
 	)
     }

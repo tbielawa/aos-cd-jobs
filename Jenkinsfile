@@ -95,7 +95,8 @@ node {
 		stage("Advisory is QE") { build.signedComposeStateQE() }
 		stage("Signing completing") { build.signedComposeRpmsSigned() }
 	    }
-	    stage("New compose") { build.signedComposeNewCompose() }
+	    stage("New el7 compose") { build.signedComposeNewComposeEl7() }
+	    stage("New el8 compose") { build.signedComposeNewComposeEl8() }
 	}
     } catch (err) {
         currentBuild.description += "\n-----------------\n\n${err}\n-----------------\n"

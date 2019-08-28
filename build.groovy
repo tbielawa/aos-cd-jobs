@@ -155,9 +155,8 @@ def signedComposeNewComposeEl8() {
 ${tagResult.combined}
 ----------------------------------------
 """)
+	    // Dry run, don't email out
 	}
-	// If we want to count how many would have been added:
-	// (result.stdOut =~ /tag_builds/).getCount()
     } else {
 	echo("Updating RHEL8 brew tag")
 	def tagResult = commonlib.shell(
@@ -168,7 +167,7 @@ ${tagResult.combined}
 	if ( tagResult.returnStatus == 0 ) {
 	    echo(tagResult.stdout)
 	} else {
-	    echo()
+	    mailForFailure(tagResult.combined)
 	    error("""Error running tag assembly:
 ----------------------------------------
 ${tagResult.combined}
@@ -185,8 +184,6 @@ ${tagResult.combined}
 
 	if ( puddleResult.returnStatus == 0 ) {
 	    echo("View the package list here: ${puddleURL}-el8")
-	    echo("WE NEED TO CONSOLIDATE EMAILING OUT SUCCESS MESSAGES. ONLY 1 PLEASE")
-	    //mailForSuccess()
 	} else {
 	    mailForFailure(puddleResult.combined)
 	    error("Error running puddle command")
@@ -194,19 +191,26 @@ ${tagResult.combined}
     }
 }
 
-// Dist - as in 'dist="el8"'
-def mailForSuccess(dist='') {
-    def puddleMeta = analyzePuddleLogs(dist=dist)
-    def successMessage = """New signed compose created for OpenShift ${params.BUILD_VERSION}-${dist}
+def mailForSuccess() {
+    def puddleMetaEl7 = analyzePuddleLogs()
+    def puddleMetaEl8 = analyzePuddleLogs(dist='-el8')
+    def successMessage = """New signed composes created for OpenShift ${params.BUILD_VERSION}
 
   Errata Whitelist included advisories: ${errataList}
-  Puddle URL: ${puddleMeta.newPuddle}
+  EL7 Puddle URL: ${puddleMetaEl7.newPuddle}
+  EL8 Puddle URL: ${puddleMetaEl8.newPuddle}
   Jenkins Console Log: ${commonlib.buildURL('console')}
 
-Puddle Changelog:
+Puddle Changelog EL7:
 ######################################################################
-${puddleMeta.changeLog}
+${puddleMetaEl7.changeLog}
 ######################################################################
+
+Puddle Changelog EL8:
+######################################################################
+${puddleMetaEl8.changeLog}
+######################################################################
+
 """
 
     echo("Mailing success message: ")
@@ -222,8 +226,8 @@ ${puddleMeta.changeLog}
     )
 }
 
-// @param <String> err: Error message from puddle command
-def mailForFailure(err) {
+// @param <String> err: Error message from failed command
+def mailForFailure(String err) {
     def failureMessage = """Error creating new signed compose OpenShift ${params.BUILD_VERSION}
 
   Errata Whitelist included advisories: ${errataList}
@@ -301,39 +305,41 @@ def thereAreBuildsToAttach() {
 // ######################################################################
 
 // Get data from the logs of the newly created puddle. Will download
-// the puddle.log and changelog.log files for archiving.
+// the puddle.log and changelog.log files for archiving. Uses the
+// global `puddleURL` variable to get the initial log. This log is
+// parsed to identify the unique tag (`latestTag`) of the new puddle.
 //
-// No parameters. Uses the global `puddleURL` variable to get the
-// initial log. This log is parsed to identify the unique tag
-// (`latestTag`) of the new puddle.
+// @params <String> dist: Prefixed with a hyphen '-', a short
+// distribution name. For example: '-el8'. Absent (default) will pull
+// standard puddle logs, which are el7.
 //
-// Return Object (map) with keys:
+// Return <Object> (map) with keys:
 // - String changeLog: The full changelog
 // - String puddleLog: The full build log
 // - String latestTag: The YYYY-MM-DD.i tag of the puddle, where 'i'
 //   is a monotonically increasing integer
 // - String newPuddle: Full URL to the new puddle base directory
-def analyzePuddleLogs(dist='') {
+def analyzePuddleLogs(String dist='') {
     dir(workdir) {
 	// Get the generic 'latest', it will tell us the actual name of this new puddle
-	commonlib.shell("wget ${puddleURL}/latest/logs/puddle.log")
+	commonlib.shell("wget ${puddleURL}${dist}/latest/logs/puddle.log -O puddle${dist}.log")
 	// This the tag of our newly created puddle
 	def latestTag = commonlib.shell(
-	    script: "awk -n '/now points to/{print \$NF}' puddle.log",
+	    script: "awk -n '/now points to/{print \$NF}' puddle${dist}.log",
 	    returnStdout: true,
 	).trim()
 
 	currentBuild.displayName += " [${latestTag}]"
-	currentBuild.description += "\nTag: ${latestTag}"
+	currentBuild.description += "\nTag${dist}: ${latestTag}"
 
 	// Form the canonical URL to our new puddle
-	def newPuddle = "${puddleURL}/${latestTag}"
+	def newPuddle = "${puddleURL}${dist}/${latestTag}"
 	// Save the changelog for emailing out
-	commonlib.shell("wget ${newPuddle}/logs/changelog.log")
+	commonlib.shell("wget ${newPuddle}/logs/changelog.log -O changelog${dist}.log")
 
 	return [
-	    changeLog: readFile("changelog.log"),
-	    puddleLog: readFile("puddle.log"),
+	    changeLog: readFile("changelog${dist}.log"),
+	    puddleLog: readFile("puddle${dist}.log"),
 	    latestTag: latestTag,
 	    newPuddle: newPuddle,
 	]

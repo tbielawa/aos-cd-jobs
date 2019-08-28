@@ -126,6 +126,7 @@ View the build artifacts and console output on Jenkins:
     } finally {
 	commonlib.safeArchiveArtifacts([
 		'email/*',
+		'shell/*',
 		"${build.workdir}/changelog*.log",
 		"${build.workdir}/puddle*.log",
 	    ]

@@ -319,7 +319,7 @@ def thereAreBuildsToAttach() {
 // - String latestTag: The YYYY-MM-DD.i tag of the puddle, where 'i'
 //   is a monotonically increasing integer
 // - String newPuddle: Full URL to the new puddle base directory
-def analyzePuddleLogs(String dist='') {
+def analyzePuddleLogs(dist='') {
     dir(workdir) {
 	// Get the generic 'latest', it will tell us the actual name of this new puddle
 	commonlib.shell("wget ${puddleURL}${dist}/latest/logs/puddle.log -O puddle${dist}.log")

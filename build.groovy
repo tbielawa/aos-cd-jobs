@@ -135,9 +135,7 @@ def signedComposeNewComposeEl7() {
 // ocp-build/buildvm.openshift.eng.bos.redhat.com@REDHAT.COM) has been
 // given permission to add packages into the new tags for RHEL8.
 def signedComposeNewComposeEl8() {
-    def tagCmd = """./ocp-tag-signed-errata-builds.py --errata-group RHOSE-${params.BUILD_VERSION}
---errata-group 'RHOSE ASYNC' --errata-product RHOSE --errata-product-version OSE-${params.BUILD_VERSION}-RHEL-8
---brew-pending-tag rhaos-${params.BUILD_VERSION}-rhel-8-image-build --verbose"""
+    def tagCmd = "./ocp-tag-signed-errata-builds.py --errata-group RHOSE-${params.BUILD_VERSION} --errata-group 'RHOSE ASYNC' --errata-product RHOSE --errata-product-version OSE-${params.BUILD_VERSION}-RHEL-8 --brew-pending-tag rhaos-${params.BUILD_VERSION}-rhel-8-image-build --verbose"
 
     if ( params.DRY_RUN ) {
 	currentBuild.description += "\nDry-run: EL8 Compose not actually built"

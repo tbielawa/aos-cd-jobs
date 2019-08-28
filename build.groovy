@@ -162,15 +162,19 @@ ${tagResult.combined}
 
 	if ( tagResult.returnStatus == 0 ) {
 	    def newPkgs = []
-	    for ( l in out.split('\n') ) {
-		if ( l.contains('tag_builds') ) {
-		    newPkgs.add(l.split(' ')[3])
+	    def untaggedPkgs = []
+	    for ( line in tagResult.stdout.split('\n') ) {
+		if ( line.contains('tag_builds') ) {
+		    newPkgs.add(line.split(' ')[3])
+		} else if ( line.contains('untag_builds') ) {
+		    untaggedPkgs.add(line.split(' ')[3])
 		}
 	    }
 
 	    if ( newPkgs.size() > 0 ) {
-		currentBuild.description += "${newPkgs} packages added to RHEL8 compose"
-		currentBuild.displayName += " [+${newPkgs} EL8]"
+		currentBuild.description += "\n${newPkgs.size()} packages added to RHEL8 tag"
+		currentBuild.description += "\n${untaggedPkgs.size()} packages removed from RHEL8 tag"
+		currentBuild.displayName += " [+${newPkgs.size()}/-${untaggedPkgs.size()} EL8]"
 	    }
 	} else {
 	    mailForFailure(tagResult.combined)

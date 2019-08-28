@@ -147,6 +147,17 @@ def signedComposeNewComposeEl8() {
 	    script: testTagCmd,
 	    returnAll: true,
 	)
+
+	if ( tagResult.returnStatus == 0 ) {
+	    echo(tagResult.stdout)
+	} else {
+	    echo()
+	    error("""Error running test tag assembly:
+----------------------------------------
+${tagResult.combined}
+----------------------------------------
+""")
+	}
 	// If we want to count how many would have been added:
 	// (result.stdOut =~ /tag_builds/).getCount()
     } else {
@@ -155,7 +166,17 @@ def signedComposeNewComposeEl8() {
 	    script: tagCmd,
 	    returnAll: true,
 	)
-	echo("${tagResult.returnStatus}")
+
+	if ( tagResult.returnStatus == 0 ) {
+	    echo(tagResult.stdout)
+	} else {
+	    echo()
+	    error("""Error running tag assembly:
+----------------------------------------
+${tagResult.combined}
+----------------------------------------
+""")
+	}
 
 	echo("Building RHEL8 puddle")
 	def puddleCmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"

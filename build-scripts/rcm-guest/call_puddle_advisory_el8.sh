@@ -5,7 +5,7 @@ set -euxo pipefail
 
 VERSION=$1
 CONF=`mktemp`
-echo "Making new signed compose for OCP ${VERSION} for RHEL8"
+echo "Making new signed compose for OCP ${VERSION}-el8"
 
 echo "Fetching default errata-puddle config file for ${VERSION}"
 wget https://raw.githubusercontent.com/openshift/aos-cd-jobs/master/build-scripts/puddle-conf/errata-puddle-${VERSION}-signed.el8.conf -O $CONF

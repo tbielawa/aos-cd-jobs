@@ -99,14 +99,13 @@ def signedComposeRpmsSigned() {
     buildlib.elliott("${elliottOpts} poll-signed ${advisoryOpt}")
 }
 
-def signedComposeNewCompose() {
+def signedComposeNewComposeEl7() {
     if ( params.DRY_RUN ) {
-	currentBuild.description += "\nDry-run: Compose not actually built"
+	currentBuild.description += "\nDry-run: EL7 Compose not actually built"
 	echo("Skipping running puddle. Would have used whitelist: ${errataList}")
     } else {
-	commonlib.shell("klist -f")
-	commonlib.shell("ssh ocp-build@rcm-guest.app.eng.bos.redhat.com -- klist -f")
-	def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
+	def cmd = """ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} <
+${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"""
 	def result = commonlib.shell(
 	    script: cmd,
 	    returnAll: true,
@@ -114,7 +113,8 @@ def signedComposeNewCompose() {
 
 	if ( result.returnStatus == 0 ) {
 	    echo("View the package list here: ${puddleURL}")
-	    mailForSuccess()
+	    echo("WE NEED TO CONSOLIDATE EMAILING OUT SUCCESS MESSAGES. ONLY 1 PLEASE")
+	    // mailForSuccess()
 	} else {
 	    mailForFailure(result.combined)
 	    error("Error running puddle command")
@@ -122,9 +122,65 @@ def signedComposeNewCompose() {
     }
 }
 
-def mailForSuccess() {
-    def puddleMeta = analyzePuddleLogs()
-    def successMessage = """New signed compose created for OpenShift ${params.BUILD_VERSION}
+// Create a new signed RHEL8 puddle. This is a work-around of sorts.
+//
+// Due to limitations in 'puddle' (which is deprecated) we have to
+// assemble a RHEL8 brew tag with signed packages MANUALLY. This
+// script (ocp-tag-signed-errata-builds.py) was provided by Ryan
+// Hartman from RCM. This replaces our former process (pre September
+// 2019) wherein we would have to submit a ticket to RCM to have
+// packages assembled into a constantly changing brew tag.
+//
+// Now, using this new process, we skip making a ticket. Instead, our
+// build account (kerberos principal:
+// ocp-build/buildvm.openshift.eng.bos.redhat.com@REDHAT.COM) has been
+// given permission to add packages into the new tags for RHEL8.
+def signedComposeNewComposeEl8() {
+    def tagCmd = """./ocp-tag-signed-errata-builds.py --errata-group RHOSE-${params.BUILD_VERSION}
+--errata-group 'RHOSE ASYNC' --errata-product RHOSE --errata-product-version OSE-${params.BUILD_VERSION}-RHEL-8
+--brew-pending-tag rhaos-${params.BUILD_VERSION}-rhel-8-image-build --verbose"""
+
+    if ( params.DRY_RUN ) {
+	currentBuild.description += "\nDry-run: EL8 Compose not actually built"
+	echo("Packages which would have been added to rhaos-${params.BUILD_VERSION}-rhel-8-image-build tag:")
+	def testTagCmd = cmd + " --test"
+	def tagResult = commonlib.shell(
+	    script: testTagCmd,
+	    returnAll: true,
+	)
+	// If we want to count how many would have been added:
+	// (result.stdOut =~ /tag_builds/).getCount()
+    } else {
+	echo("Updating RHEL8 brew tag")
+	def tagResult = commonlib.shell(
+	    script: tagCmd,
+	    returnAll: true,
+	)
+	echo("${tagResult.returnStatus}")
+
+	echo("Building RHEL8 puddle")
+	def puddleCmd = """ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} <
+${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"""
+	def puddleResult = commonlib.shell(
+	    script: puddleCmd,
+	    returnAll: true,
+	)
+
+	if ( puddleResult.returnStatus == 0 ) {
+	    echo("View the package list here: ${puddleURL}-el8")
+	    echo("WE NEED TO CONSOLIDATE EMAILING OUT SUCCESS MESSAGES. ONLY 1 PLEASE")
+	    //mailForSuccess()
+	} else {
+	    mailForFailure(puddleResult.combined)
+	    error("Error running puddle command")
+	}
+    }
+}
+
+// Dist - as in 'dist="el8"'
+def mailForSuccess(dist='') {
+    def puddleMeta = analyzePuddleLogs(dist=dist)
+    def successMessage = """New signed compose created for OpenShift ${params.BUILD_VERSION}-${dist}
 
   Errata Whitelist included advisories: ${errataList}
   Puddle URL: ${puddleMeta.newPuddle}
@@ -217,16 +273,15 @@ def thereAreBuildsToAttach() {
     }
 }
 
-// Check if builds are signed
-def buildsSigned(String forAdvisory) {
-    def result = commonlib.shell(
-	script: "elliott ${elliottOpts} poll-signed --advisory ${forAdvisory}",
-	returnAll: true,
-    )
+// // Check if builds are signed
+// def buildsSigned(String forAdvisory) {
+//     def result = commonlib.shell(
+// 	script: "elliott ${elliottOpts} poll-signed --advisory ${forAdvisory}",
+// 	returnAll: true,
+//     )
+// }
 
-
-
-}
+// ######################################################################
 
 // Get data from the logs of the newly created puddle. Will download
 // the puddle.log and changelog.log files for archiving.
@@ -241,7 +296,7 @@ def buildsSigned(String forAdvisory) {
 // - String latestTag: The YYYY-MM-DD.i tag of the puddle, where 'i'
 //   is a monotonically increasing integer
 // - String newPuddle: Full URL to the new puddle base directory
-def analyzePuddleLogs() {
+def analyzePuddleLogs(dist='') {
     dir(workdir) {
 	// Get the generic 'latest', it will tell us the actual name of this new puddle
 	commonlib.shell("wget ${puddleURL}/latest/logs/puddle.log")

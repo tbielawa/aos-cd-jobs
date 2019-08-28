@@ -193,7 +193,7 @@ ${tagResult.combined}
 
 def mailForSuccess() {
     def puddleMetaEl7 = analyzePuddleLogs()
-    def puddleMetaEl8 = analyzePuddleLogs(dist='-el8')
+    def puddleMetaEl8 = analyzePuddleLogs('-el8')
     def successMessage = """New signed composes created for OpenShift ${params.BUILD_VERSION}
 
   Errata Whitelist included advisories: ${errataList}
@@ -319,7 +319,7 @@ def thereAreBuildsToAttach() {
 // - String latestTag: The YYYY-MM-DD.i tag of the puddle, where 'i'
 //   is a monotonically increasing integer
 // - String newPuddle: Full URL to the new puddle base directory
-def analyzePuddleLogs(dist='') {
+def analyzePuddleLogs(String dist='') {
     dir(workdir) {
 	// Get the generic 'latest', it will tell us the actual name of this new puddle
 	commonlib.shell("wget ${puddleURL}${dist}/latest/logs/puddle.log -O puddle${dist}.log")

@@ -104,8 +104,7 @@ def signedComposeNewComposeEl7() {
 	currentBuild.description += "\nDry-run: EL7 Compose not actually built"
 	echo("Skipping running puddle. Would have used whitelist: ${errataList}")
     } else {
-	def cmd = """ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} <
-${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"""
+	def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
 	def result = commonlib.shell(
 	    script: cmd,
 	    returnAll: true,
@@ -159,8 +158,7 @@ def signedComposeNewComposeEl8() {
 	echo("${tagResult.returnStatus}")
 
 	echo("Building RHEL8 puddle")
-	def puddleCmd = """ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} <
-${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"""
+	def puddleCmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"
 	def puddleResult = commonlib.shell(
 	    script: puddleCmd,
 	    returnAll: true,

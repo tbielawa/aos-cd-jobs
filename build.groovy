@@ -110,11 +110,7 @@ def signedComposeNewComposeEl7() {
 	    returnAll: true,
 	)
 
-	if ( result.returnStatus == 0 ) {
-	    echo("View the package list here: ${puddleURL}")
-	    echo("WE NEED TO CONSOLIDATE EMAILING OUT SUCCESS MESSAGES. ONLY 1 PLEASE")
-	    // mailForSuccess()
-	} else {
+	if ( result.returnStatus != 0 ) {
 	    mailForFailure(result.combined)
 	    error("Error running puddle command")
 	}
@@ -165,7 +161,11 @@ ${tagResult.combined}
 	)
 
 	if ( tagResult.returnStatus == 0 ) {
-	    echo(tagResult.stdout)
+	    def newPkgs = (tagResult.stdout =~ /tag_builds/).getCount()
+	    if ( newPkgs > 0 ) {
+		currentBuild.description += "${newPkgs} packages added to RHEL8 compose"
+		currentBuild.displayName += " [+${newPkgs} EL8]"
+	    }
 	} else {
 	    mailForFailure(tagResult.combined)
 	    error("""Error running tag assembly:
@@ -329,7 +329,7 @@ def analyzePuddleLogs(String dist='') {
 	    returnStdout: true,
 	).trim()
 
-	currentBuild.displayName += " [${latestTag}]"
+	// currentBuild.displayName += " [${latestTag}]"
 	currentBuild.description += "\nTag${dist}: ${latestTag}"
 
 	// Form the canonical URL to our new puddle

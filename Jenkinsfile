@@ -73,7 +73,7 @@ node {
     stage("Initialize") {
 	buildlib.elliott "--version"
 	buildlib.kinit()
-	currentBuild.displayName = "OCP ${params.BUILD_VERSION} signed puddle: ${currentBuild.number}"
+	currentBuild.displayName = "#${currentBuild.number} OCP ${params.BUILD_VERSION}"
 	build.initialize(advisory)
     }
 

@@ -161,7 +161,13 @@ ${tagResult.combined}
 	)
 
 	if ( tagResult.returnStatus == 0 ) {
-	    def newPkgs = tagResult.stdout.split('\n').grep( ~/^INFO:root:tag_builds.*/ ).collect { it.split(' ')[3] }
+	    def newPkgs = []
+	    for ( l in out.split('\n') ) {
+		if ( l.contains('tag_builds') ) {
+		    newPkgs.add(l.split(' ')[3])
+		}
+	    }
+
 	    if ( newPkgs.size() > 0 ) {
 		currentBuild.description += "${newPkgs} packages added to RHEL8 compose"
 		currentBuild.displayName += " [+${newPkgs} EL8]"

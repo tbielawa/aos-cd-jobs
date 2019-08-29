@@ -34,24 +34,6 @@ node {
                         // 'aos-art-automation+failed-signed-puddle@redhat.com'
                     ],
                     [
-                        name: 'BUILDS',
-                        description: 'Optional: Only attach these brew builds (accepts numeric id or NVR)\nComma separated list\nOverrides SKIP_ADDING_BUILDS',
-                        $class: 'hudson.model.StringParameterDefinition',
-                        defaultValue: ""
-                    ],
-                    [
-                        name: 'SKIP_ADDING_BUILDS',
-                        description: 'Do not bother adding more builds\nfor example: if you are already satisfied with what is already attached and just need to run the rpmdiff/signing process',
-                        $class: 'BooleanParameterDefinition',
-                        defaultValue: false
-                    ],
-                    // [
-                    //     name: 'ONLY_RUN_PUDDLE',
-                    //     description: 'Do not run any stages other than the puddle stage',
-                    //     $class: 'BooleanParameterDefinition',
-                    //     defaultValue: false
-                    // ],
-                    [
                         name: 'DRY_RUN',
                         description: 'Do not update the puddle. Just show what would have happened',
                         $class: 'BooleanParameterDefinition',

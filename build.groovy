@@ -22,33 +22,15 @@ def signedComposeStateNewFiles() {
 }
 
 def signedComposeAttachBuilds() {
-    def cmd = ''
+    def cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
+    def cmdEl8 = "${elliottOpts} --branch rhaos-${params.BUILD_VERSION}-rhel-8 find-builds --kind rpm --use-default-advisory rpm"
 
-    if ( params.BUILDS != '' ) {
-	// You provided builds
-	if ( params.SKIP_ADDING_BUILDS ) {
-	    // But you accidentally clicked 'skip'
-	    echo("Skip adding builds was requested but will be ignored because builds were provided manually")
-	} else {
-	    // Attach builds manually
-	    cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt} -b ${params.BUILDS}"
-	}
-    } else if ( params.SKIP_ADDING_BUILDS ) {
-	// You didn't provide builds, and you want to skip them
-	echo("Not updating builds")
-    } else {
-	// You didn't provide builds, and you didn't say to skip adding them
-	cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
-    }
-
-    if ( cmd != '') {
-	try {
-	    def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
-
-	} catch (err) {
-	    echo("Problem running elliott")
-	    error("Could not process attach builds command")
-	}
+    try {
+	def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
+	def attachResultEl8 = buildlib.elliott(cmdEl8, [capture: true]).trim().split('\n')[-1]
+    } catch (err) {
+	echo("Problem running elliott")
+	error("Could not process a find-builds command")
     }
 }
 

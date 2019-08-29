@@ -77,13 +77,13 @@ node {
 	build.initialize(advisory)
     }
 
-    if ( build.thereAreBuildsToAttach() ) {
-	echo("Builds to attach, must run all steps")
-	skipBusiness = false
-    } else {
-	echo("Nothing to attach, will skip steps")
-	skipBusiness = true
-    }
+    // if ( build.thereAreBuildsToAttach() ) {
+    // 	echo("Builds to attach, must run all steps")
+    // 	skipBusiness = false
+    // } else {
+    // 	echo("Nothing to attach, will skip steps")
+    // 	skipBusiness = true
+    // }
 
     try {
 	sshagent(["openshift-bot"]) {

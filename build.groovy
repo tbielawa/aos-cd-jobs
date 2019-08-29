@@ -26,18 +26,18 @@ def signedComposeAttachBuilds() {
     def cmdEl8 = "${elliottOpts} --branch rhaos-${params.BUILD_VERSION}-rhel-8 find-builds --kind rpm --use-default-advisory rpm"
 
     try {
-	def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
-	def attachResultEl8 = buildlib.elliott(cmdEl8, [capture: true]).trim().split('\n')[-1]
+        def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
+        def attachResultEl8 = buildlib.elliott(cmdEl8, [capture: true]).trim().split('\n')[-1]
     } catch (err) {
-	echo("Problem running elliott")
-	error("Could not process a find-builds command")
+        echo("Problem running elliott")
+        error("Could not process a find-builds command")
     }
 }
 
 def signedComposeRpmdiffsRan(advisory) {
     commonlib.shell(
-	// script auto-waits 60 seconds and re-retries until completed
-	script: "./rpmdiff.py check-ran ${advisory}",
+        // script auto-waits 60 seconds and re-retries until completed
+        script: "./rpmdiff.py check-ran ${advisory}",
     )
 }
 
@@ -45,29 +45,29 @@ def signedComposeRpmdiffsResolved(advisory) {
     echo "Action may be required: Complete any pending RPM Diff waivers to continue. Pending diffs will be printed."
 
     def result = commonlib.shell(
-	script: "./rpmdiff.py check-resolved ${advisory}",
-	returnAll: true
+        script: "./rpmdiff.py check-resolved ${advisory}",
+        returnAll: true
     )
 
     if (result.returnStatus != 0) {
-	currentBuild.description += "\nRPM Diff resolution required"
-	mailForResolution(result.stdout)
-	// email people to have somebody take care of business
-	def resp = input message: "Action required: Complete any pending RPM Diff waivers to continue",
+        currentBuild.description += "\nRPM Diff resolution required"
+        mailForResolution(result.stdout)
+        // email people to have somebody take care of business
+        def resp = input message: "Action required: Complete any pending RPM Diff waivers to continue",
         parameters: [
-	    [
+            [
                 $class: 'hudson.model.ChoiceParameterDefinition',
                 choices: "CONTINUE\nABORT",
                 name: 'action',
                 description: 'CONTINUE if all RPM diffs have been waived. ABORT (terminate the pipeline) to stop this job.'
-	    ]
+            ]
         ]
 
         switch (resp) {
-	    case "CONTINUE":
+            case "CONTINUE":
                 echo("RPM Diffs are resolved. Continuing to make signed puddle")
                 return true
-	    default:
+            default:
                 error("User chose to abort pipeline after reviewing RPM Diff waivers")
         }
     }
@@ -78,24 +78,25 @@ def signedComposeStateQE() {
 }
 
 def signedComposeRpmsSigned() {
+    retry(3) {
     buildlib.elliott("${elliottOpts} poll-signed ${advisoryOpt}")
 }
 
 def signedComposeNewComposeEl7() {
     if ( params.DRY_RUN ) {
-	currentBuild.description += "\nDry-run: EL7 Compose not actually built"
-	echo("Skipping running puddle. Would have used whitelist: ${errataList}")
+        currentBuild.description += "\nDry-run: EL7 Compose not actually built"
+        echo("Skipping running puddle. Would have used whitelist: ${errataList}")
     } else {
-	def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
-	def result = commonlib.shell(
-	    script: cmd,
-	    returnAll: true,
-	)
+        def cmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION, errataList)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory.sh"
+        def result = commonlib.shell(
+            script: cmd,
+            returnAll: true,
+        )
 
-	if ( result.returnStatus != 0 ) {
-	    mailForFailure(result.combined)
-	    error("Error running puddle command")
-	}
+        if ( result.returnStatus != 0 ) {
+            mailForFailure(result.combined)
+            error("Error running puddle command")
+        }
     }
 }
 
@@ -116,70 +117,70 @@ def signedComposeNewComposeEl8() {
     def tagCmd = "./ocp-tag-signed-errata-builds.py --errata-group RHOSE-${params.BUILD_VERSION} --errata-group 'RHOSE ASYNC' --errata-product RHOSE --errata-product-version OSE-${params.BUILD_VERSION}-RHEL-8 --brew-pending-tag rhaos-${params.BUILD_VERSION}-rhel-8-image-build --verbose"
 
     if ( params.DRY_RUN ) {
-	currentBuild.description += "\nDry-run: EL8 Compose not actually built"
-	echo("Packages which would have been added to rhaos-${params.BUILD_VERSION}-rhel-8-image-build tag:")
-	def testTagCmd = cmd + " --test"
-	def tagResult = commonlib.shell(
-	    script: testTagCmd,
-	    returnAll: true,
-	)
+        currentBuild.description += "\nDry-run: EL8 Compose not actually built"
+        echo("Packages which would have been added to rhaos-${params.BUILD_VERSION}-rhel-8-image-build tag:")
+        def testTagCmd = cmd + " --test"
+        def tagResult = commonlib.shell(
+            script: testTagCmd,
+            returnAll: true,
+        )
 
-	if ( tagResult.returnStatus == 0 ) {
-	    echo(tagResult.stdout)
-	} else {
-	    echo()
-	    error("""Error running test tag assembly:
+        if ( tagResult.returnStatus == 0 ) {
+            echo(tagResult.stdout)
+        } else {
+            echo()
+            error("""Error running test tag assembly:
 ----------------------------------------
 ${tagResult.combined}
 ----------------------------------------
 """)
-	    // Dry run, don't email out
-	}
+            // Dry run, don't email out
+        }
     } else {
-	echo("Updating RHEL8 brew tag")
-	def tagResult = commonlib.shell(
-	    script: tagCmd,
-	    returnAll: true,
-	)
+        echo("Updating RHEL8 brew tag")
+        def tagResult = commonlib.shell(
+            script: tagCmd,
+            returnAll: true,
+        )
 
-	if ( tagResult.returnStatus == 0 ) {
-	    def newPkgs = []
-	    def untaggedPkgs = []
-	    for ( line in tagResult.stdout.split('\n') ) {
-		if ( line.contains('tag_builds') ) {
-		    newPkgs.add(line.split(' ')[3])
-		} else if ( line.contains('untag_builds') ) {
-		    untaggedPkgs.add(line.split(' ')[3])
-		}
-	    }
+        if ( tagResult.returnStatus == 0 ) {
+            def newPkgs = []
+            def untaggedPkgs = []
+            for ( line in tagResult.stdout.split('\n') ) {
+                if ( line.contains('tag_builds') ) {
+                    newPkgs.add(line.split(' ')[3])
+                } else if ( line.contains('untag_builds') ) {
+                    untaggedPkgs.add(line.split(' ')[3])
+                }
+            }
 
-	    if ( newPkgs.size() > 0 ) {
-		currentBuild.description += "\n${newPkgs.size()} packages added to RHEL8 tag"
-		currentBuild.description += "\n${untaggedPkgs.size()} packages removed from RHEL8 tag"
-		currentBuild.displayName += " [+${newPkgs.size()}/-${untaggedPkgs.size()} EL8]"
-	    }
-	} else {
-	    mailForFailure(tagResult.combined)
-	    error("""Error running tag assembly:
+            if ( newPkgs.size() > 0 ) {
+                currentBuild.description += "\n${newPkgs.size()} packages added to RHEL8 tag"
+                currentBuild.description += "\n${untaggedPkgs.size()} packages removed from RHEL8 tag"
+                currentBuild.displayName += " [+${newPkgs.size()}/-${untaggedPkgs.size()} EL8]"
+            }
+        } else {
+            mailForFailure(tagResult.combined)
+            error("""Error running tag assembly:
 ----------------------------------------
 ${tagResult.combined}
 ----------------------------------------
 """)
-	}
+        }
 
-	echo("Building RHEL8 puddle")
-	def puddleCmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"
-	def puddleResult = commonlib.shell(
-	    script: puddleCmd,
-	    returnAll: true,
-	)
+        echo("Building RHEL8 puddle")
+        def puddleCmd = "ssh ocp-build@rcm-guest.app.eng.bos.redhat.com sh -s ${buildlib.args_to_string(params.BUILD_VERSION)} < ${env.WORKSPACE}/build-scripts/rcm-guest/call_puddle_advisory_el8.sh"
+        def puddleResult = commonlib.shell(
+            script: puddleCmd,
+            returnAll: true,
+        )
 
-	if ( puddleResult.returnStatus == 0 ) {
-	    echo("View the package list here: ${puddleURL}-el8")
-	} else {
-	    mailForFailure(puddleResult.combined)
-	    error("Error running puddle command")
-	}
+        if ( puddleResult.returnStatus == 0 ) {
+            echo("View the package list here: ${puddleURL}-el8")
+        } else {
+            mailForFailure(puddleResult.combined)
+            error("Error running puddle command")
+        }
     }
 }
 
@@ -280,17 +281,17 @@ def thereAreBuildsToAttach() {
     def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
     echo("Attach result: ${attachResult}")
     if ( attachResult == "No builds needed to be attached" ) {
-	return true
+        return true
     } else {
-	return false
+        return false
     }
 }
 
 // // Check if builds are signed
 // def buildsSigned(String forAdvisory) {
 //     def result = commonlib.shell(
-// 	script: "elliott ${elliottOpts} poll-signed --advisory ${forAdvisory}",
-// 	returnAll: true,
+//      script: "elliott ${elliottOpts} poll-signed --advisory ${forAdvisory}",
+//      returnAll: true,
 //     )
 // }
 
@@ -313,28 +314,28 @@ def thereAreBuildsToAttach() {
 // - String newPuddle: Full URL to the new puddle base directory
 def analyzePuddleLogs(String dist='') {
     dir(workdir) {
-	// Get the generic 'latest', it will tell us the actual name of this new puddle
-	commonlib.shell("wget ${puddleURL}${dist}/latest/logs/puddle.log -O puddle${dist}.log")
-	// This the tag of our newly created puddle
-	def latestTag = commonlib.shell(
-	    script: "awk -n '/now points to/{print \$NF}' puddle${dist}.log",
-	    returnStdout: true,
-	).trim()
+        // Get the generic 'latest', it will tell us the actual name of this new puddle
+        commonlib.shell("wget ${puddleURL}${dist}/latest/logs/puddle.log -O puddle${dist}.log")
+        // This the tag of our newly created puddle
+        def latestTag = commonlib.shell(
+            script: "awk -n '/now points to/{print \$NF}' puddle${dist}.log",
+            returnStdout: true,
+        ).trim()
 
-	currentBuild.description += "\nTag${dist}: ${latestTag}"
-	// Form the canonical URL to our new puddle
-	def newPuddle = "${puddleURL}${dist}/${latestTag}"
+        currentBuild.description += "\nTag${dist}: ${latestTag}"
+        // Form the canonical URL to our new puddle
+        def newPuddle = "${puddleURL}${dist}/${latestTag}"
 
-	currentBuild.description += "Puddle: ${newPuddle}"
-	// Save the changelog for emailing out
-	commonlib.shell("wget ${newPuddle}/logs/changelog.log -O changelog${dist}.log")
+        currentBuild.description += "Puddle: ${newPuddle}"
+        // Save the changelog for emailing out
+        commonlib.shell("wget ${newPuddle}/logs/changelog.log -O changelog${dist}.log")
 
-	return [
-	    changeLog: readFile("changelog${dist}.log"),
-	    puddleLog: readFile("puddle${dist}.log"),
-	    latestTag: latestTag,
-	    newPuddle: newPuddle,
-	]
+        return [
+            changeLog: readFile("changelog${dist}.log"),
+            puddleLog: readFile("puddle${dist}.log"),
+            latestTag: latestTag,
+            newPuddle: newPuddle,
+        ]
     }
 }
 

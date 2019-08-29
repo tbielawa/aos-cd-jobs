@@ -53,66 +53,66 @@ node {
     def skipBusiness = false
 
     stage("Initialize") {
-	buildlib.elliott "--version"
-	buildlib.kinit()
-	currentBuild.displayName = "#${currentBuild.number} OCP ${params.BUILD_VERSION}"
-	build.initialize(advisory)
+        buildlib.elliott "--version"
+        buildlib.kinit()
+        currentBuild.displayName = "#${currentBuild.number} OCP ${params.BUILD_VERSION}"
+        build.initialize(advisory)
     }
 
     // if ( build.thereAreBuildsToAttach() ) {
-    // 	echo("Builds to attach, must run all steps")
-    // 	skipBusiness = false
+    //  echo("Builds to attach, must run all steps")
+    //  skipBusiness = false
     // } else {
-    // 	echo("Nothing to attach, will skip steps")
-    // 	skipBusiness = true
+    //  echo("Nothing to attach, will skip steps")
+    //  skipBusiness = true
     // }
 
     try {
-	sshagent(["openshift-bot"]) {
-	    if ( !skipBusiness ) {
-		stage("Advisory is NEW_FILES") { build.signedComposeStateNewFiles() }
-		stage("Attach builds") { build.signedComposeAttachBuilds() }
-		stage("RPM diffs ran") { build.signedComposeRpmdiffsRan(advisory) }
-		stage("RPM diffs resolved") { build.signedComposeRpmdiffsResolved(advisory) }
-		stage("Advisory is QE") { build.signedComposeStateQE() }
-		stage("Signing completing") { build.signedComposeRpmsSigned() }
-	    }
-	    stage("New el7 compose") { build.signedComposeNewComposeEl7() }
-	    // Ensure the rhel8 tag script can read the required cert
-	    withEnv(['REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt']) {
-		stage("New el8 compose") { build.signedComposeNewComposeEl8() }
-	    }
-	}
-	build.mailForSuccess()
+        sshagent(["openshift-bot"]) {
+            if ( !skipBusiness ) {
+                stage("Advisory is NEW_FILES") { build.signedComposeStateNewFiles() }
+                stage("Attach builds") { build.signedComposeAttachBuilds() }
+                stage("RPM diffs ran") { build.signedComposeRpmdiffsRan(advisory) }
+                stage("RPM diffs resolved") { build.signedComposeRpmdiffsResolved(advisory) }
+                stage("Advisory is QE") { build.signedComposeStateQE() }
+                stage("Signing completing") { build.signedComposeRpmsSigned() }
+            }
+            stage("New el7 compose") { build.signedComposeNewComposeEl7() }
+            // Ensure the rhel8 tag script can read the required cert
+            withEnv(['REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt']) {
+                stage("New el8 compose") { build.signedComposeNewComposeEl8() }
+            }
+        }
+        build.mailForSuccess()
     } catch (err) {
         currentBuild.description += "\n-----------------\n\n${err}\n-----------------\n"
-	currentBuild.result = "FAILURE"
+        currentBuild.result = "FAILURE"
 
-	if (params.MAIL_LIST_FAILURE.trim()) {
-	    commonlib.email(
-		to: params.MAIL_LIST_FAILURE,
-		from: "aos-art-automation+failed-signed-compose@redhat.com",
-		replyTo: "aos-team-art@redhat.com",
-		subject: "Error building OCP Signed Puddle ${params.BUILD_VERSION}",
-		body:
-		    """\
+        if (params.MAIL_LIST_FAILURE.trim()) {
+            commonlib.email(
+                to: params.MAIL_LIST_FAILURE,
+                from: "aos-art-automation+failed-signed-compose@redhat.com",
+                replyTo: "aos-team-art@redhat.com",
+                subject: "Error building OCP Signed Puddle ${params.BUILD_VERSION}",
+                body:
+                    """\
 Pipeline build "${currentBuild.displayName}" encountered an error:
 ${currentBuild.description}
 View the build artifacts and console output on Jenkins:
     - Jenkins job: ${commonlib.buildURL()}
     - Console output: ${commonlib.buildURL('console')}
 """
-	    )
-	}
-	throw err  // gets us a stack trace FWIW
+            )
+        }
+        throw err  // gets us a stack trace FWIW
     } finally {
-	commonlib.safeArchiveArtifacts([
-		'email/*',
-		'shell/*',
-		"${build.workdir}/changelog*.log",
-		"${build.workdir}/puddle*.log",
-	    ]
-	)
+        commonlib.safeArchiveArtifacts([
+                'email/*',
+                'shell/*',
+                "${build.workdir}/changelog*.log",
+                "${build.workdir}/puddle*.log",
+            ]
+        )
     }
 
 

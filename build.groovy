@@ -339,11 +339,11 @@ def analyzePuddleLogs(String dist='') {
 	    returnStdout: true,
 	).trim()
 
-	// currentBuild.displayName += " [${latestTag}]"
 	currentBuild.description += "\nTag${dist}: ${latestTag}"
-
 	// Form the canonical URL to our new puddle
 	def newPuddle = "${puddleURL}${dist}/${latestTag}"
+
+	currentBuild.description += "Puddle: ${newPuddle}"
 	// Save the changelog for emailing out
 	commonlib.shell("wget ${newPuddle}/logs/changelog.log -O changelog${dist}.log")
 

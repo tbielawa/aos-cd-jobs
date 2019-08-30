@@ -7,33 +7,48 @@ advisoryOpt = "--use-default-advisory rpm"
 errataList = ""
 puddleURL = "http://download.lab.bos.redhat.com/rcm-guest/puddles/RHAOS/AtomicOpenShift-signed/${params.BUILD_VERSION}"
 workdir = "puddleWorking"
+// Substitute the advisory ID in later
+rpmDiffsUrl = "https://errata.devel.redhat.com/advisory/ID/rpmdiff_runs"
 
 def initialize(advisory) {
     buildlib.cleanWorkdir(workdir)
     elliottOpts += "--group=openshift-${params.BUILD_VERSION}"
-    echo "${currentBuild.displayName}: https://errata.devel.redhat.com/advisory/${advisory}"
+    echo("${currentBuild.displayName}: https://errata.devel.redhat.com/advisory/${advisory}")
+    rpmDiffsUrl = rpmDiffsUrl.replace("ID", advisory)
     errataList += buildlib.elliott("${elliottOpts} puddle-advisories", [capture: true]).trim().replace(' ', '')
     currentBuild.description = "Signed puddle for advisory https://errata.devel.redhat.com/advisory/${advisory}"
     currentBuild.description += "\nErrata whitelist: ${errataList}"
 }
 
+// Set the advisory to the NEW_FILES state (allows builds to be added)
 def signedComposeStateNewFiles() {
     buildlib.elliott("${elliottOpts} change-state --state NEW_FILES ${advisoryOpt}")
 }
 
+// Search brew for, and then attach, any viable builds. Do this for
+// EL7 and EL8.
 def signedComposeAttachBuilds() {
-    def cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
-    def cmdEl8 = "${elliottOpts} --branch rhaos-${params.BUILD_VERSION}-rhel-8 find-builds --kind rpm --use-default-advisory rpm"
+    // Don't actually attach builds if this is just a dry run
+    def advs = (params.DRY_RUN == true) ? advisoryOpt : ''
+    def cmd = "${elliottOpts} find-builds --kind rpm ${advs}"
+    def cmdEl8 = "${elliottOpts} --branch rhaos-${params.BUILD_VERSION}-rhel-8 find-builds --kind rpm ${advs}"
 
     try {
         def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
         def attachResultEl8 = buildlib.elliott(cmdEl8, [capture: true]).trim().split('\n')[-1]
     } catch (err) {
         echo("Problem running elliott")
+        currentBuild.description += """
+----------------------------------------
+${err}
+----------------------------------------"""
         error("Could not process a find-builds command")
     }
 }
 
+// Monitor and wait for all of the RPM diffs to run.
+//
+// @param <String> advisory: The ID of the advisory to watch
 def signedComposeRpmdiffsRan(advisory) {
     commonlib.shell(
         // script auto-waits 60 seconds and re-retries until completed
@@ -41,6 +56,14 @@ def signedComposeRpmdiffsRan(advisory) {
     )
 }
 
+// Check that each of the RPM Diffs for the given advisory have been
+// resolved (waived/passed). RPM Diffs that require human intervention
+// will be collected and then later emailed out to the team.
+//
+// The job will block here until the diffs are resolved and someone
+// presses the `CONTINUE` button.
+//
+// @param <String> advisory: The ID of the advisory to check
 def signedComposeRpmdiffsResolved(advisory) {
     echo "Action may be required: Complete any pending RPM Diff waivers to continue. Pending diffs will be printed."
 
@@ -73,15 +96,66 @@ def signedComposeRpmdiffsResolved(advisory) {
     }
 }
 
+// Put the advisory into the QE state. This will trigger the
+// build-signing mechanism. You might call this more than once if
+// you're having trouble getting a build to get signed in a reasonable
+// amount of time (10 minutes).
 def signedComposeStateQE() {
     buildlib.elliott("${elliottOpts} change-state --state QE ${advisoryOpt}")
 }
 
+// Poll the 'signed' status of all builds attached to the advisory. We
+// wrap this in a retry() because some times the builds won't get
+// signed in a reasonable amount of time (10 minutes). To account for
+// that possible condition we frob the state between NEW_FILES and
+// QE. Re-entering the QE state triggers the signing mechanism again.
 def signedComposeRpmsSigned() {
+    def signed = false
     retry(3) {
-    buildlib.elliott("${elliottOpts} poll-signed ${advisoryOpt}")
+        try {
+            buildlib.elliott("${elliottOpts} poll-signed --minutes=10 ${advisoryOpt}")
+            signed = true
+        } catch (err) {
+            signedComposeStateNewFiles()
+            // Give it a chance to catch up. ET can be slow
+            sleep 5
+            signedComposeStateQE()
+        } finally {
+            if ( !signed ) {
+                error("Failed to get all builds to 'signed' status after 3 retries")
+            }
+        }
+    }
 }
 
+// Create a new RHEL7 compose. Take note of the following:
+//
+// The `puddle` command (which this step invokes) *REQUIRES* that the
+// user running it (ocp-build, in this case) has a valid kerberos
+// ticket. To ensure that this is ready and available for our use case
+// we must ensure a few things happen:
+//
+// * The `jenkins` user has enabled kerberos `ticket forwarding`
+//   option. When running `kinit` we *MUST* include the `-f` option
+//   flag. This requests a `forwardable` ticket for the user.
+//
+// * Additionally, ensure that the `jenkins` user has the:
+//
+//     `GSSAPIDelegateCredentials yes`
+//
+//  option set in their ~/.ssh/config file like this:
+//
+//     Host rcm-guest rcm-guest.app.eng.bos.redhat.com
+//     Hostname                   rcm-guest.app.eng.bos.redhat.com
+//     User                       ocp-build
+//     GSSAPIDelegateCredentials  yes
+//
+// That last line there, will tell the `ssh` command to try to
+// authenticate using GSSAPI (kerberos, in our case) credentials.
+//
+// FINALLY, the user on the remote end (`ocp-build`) *MUST* have their
+// `~/.k5login` file configured to include the principal we're
+// authenticating with.
 def signedComposeNewComposeEl7() {
     if ( params.DRY_RUN ) {
         currentBuild.description += "\nDry-run: EL7 Compose not actually built"
@@ -125,6 +199,9 @@ def signedComposeNewComposeEl8() {
             returnAll: true,
         )
 
+        echo("Sleeping 10 seconds to give brew some time to catch up")
+        sleep 10
+
         if ( tagResult.returnStatus == 0 ) {
             echo(tagResult.stdout)
         } else {
@@ -134,7 +211,6 @@ def signedComposeNewComposeEl8() {
 ${tagResult.combined}
 ----------------------------------------
 """)
-            // Dry run, don't email out
         }
     } else {
         echo("Updating RHEL8 brew tag")
@@ -142,6 +218,9 @@ ${tagResult.combined}
             script: tagCmd,
             returnAll: true,
         )
+
+        echo("Sleeping 10 seconds to give brew some time to catch up")
+        sleep 10
 
         if ( tagResult.returnStatus == 0 ) {
             def newPkgs = []
@@ -184,6 +263,8 @@ ${tagResult.combined}
     }
 }
 
+// We did it! This grabs puddle logs to give us data required to
+// format a useful email.
 def mailForSuccess() {
     def puddleMetaEl7 = analyzePuddleLogs()
     def puddleMetaEl8 = analyzePuddleLogs('-el8')
@@ -245,13 +326,22 @@ ${err}
     )
 }
 
+// RPM Diffs have ran, however, they are not all resolved/waived. Send
+// out a notice to the team so someone can complete the remaining
+// diffs.
+//
+// @param <String> diffs: A string with the status of EACH remaining
+// diff, what RPM is being diffed, and the URL to resolve the diff
 def mailForResolution(diffs) {
     def diffMessage = """
 Manual RPM Diff resolution is required for the generation of an
 ongoing signed-compose. Please review the RPM Diffs below and resolve
 them as soon as possible.
 
+View all RPM Diffs: ${rpmDiffsUrl}
+----------------------------------------
 ${diffs}
+----------------------------------------
 
 After the RPM Diffs have been resolved please return to the
 in-progress compose job and choose the CONTINUE option.
@@ -271,30 +361,6 @@ in-progress compose job and choose the CONTINUE option.
 
 // ######################################################################
 // Some utility functions
-
-// Check if there are any builds that *need* or *can* be
-// attached.
-//
-// XXX: DOESN'T CONSIDER MANUALLY PROVIDED BUILDS YET
-def thereAreBuildsToAttach() {
-    def cmd = "${elliottOpts} find-builds --kind rpm ${advisoryOpt}"
-    def attachResult = buildlib.elliott(cmd, [capture: true]).trim().split('\n')[-1]
-    echo("Attach result: ${attachResult}")
-    if ( attachResult == "No builds needed to be attached" ) {
-        return true
-    } else {
-        return false
-    }
-}
-
-// // Check if builds are signed
-// def buildsSigned(String forAdvisory) {
-//     def result = commonlib.shell(
-//      script: "elliott ${elliottOpts} poll-signed --advisory ${forAdvisory}",
-//      returnAll: true,
-//     )
-// }
-
 // ######################################################################
 
 // Get data from the logs of the newly created puddle. Will download
@@ -306,7 +372,7 @@ def thereAreBuildsToAttach() {
 // distribution name. For example: '-el8'. Absent (default) will pull
 // standard puddle logs, which are el7.
 //
-// Return <Object> (map) with keys:
+// @return <Object> (map) with keys:
 // - String changeLog: The full changelog
 // - String puddleLog: The full build log
 // - String latestTag: The YYYY-MM-DD.i tag of the puddle, where 'i'

@@ -23,6 +23,7 @@ else
     echo "Fetching ODO client ${VERSION}"
 fi
 
+echo "More output for debugging"
 
 OUTDIR=${TMPDIR}/${VERSION}
 mkdir "${OUTDIR}"

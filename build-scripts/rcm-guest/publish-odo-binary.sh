@@ -21,6 +21,7 @@ then
     exit 0
 else
     echo "Fetching ODO client ${VERSION}"
+    echo "debugging output"
 fi
 
 echo "More output for debugging"

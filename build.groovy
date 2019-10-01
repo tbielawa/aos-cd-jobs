@@ -1,6 +1,6 @@
 buildlib = load("pipeline-scripts/buildlib.groovy")
 commonlib = buildlib.commonlib
-
+workdir = "crcStaging"
 
 def initialize() {
     buildlib.cleanWorkdir(workdir)

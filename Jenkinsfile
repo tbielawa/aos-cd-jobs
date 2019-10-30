@@ -55,9 +55,7 @@ node {
     }
 
     try {
-	stage("Demo") {
-	    echo("Should be a stage here")
-	}
+	stage("Gen AMI docs") { build.rhcosSyncGenDocs() }
     } catch ( err ) {
         commonlib.email(
             to: "aos-art-automation+failed-rhcos-sync@redhat.com",

@@ -33,7 +33,7 @@ node {
                     ],
                     [
                         name: 'NOOP',
-                        description: 'Run "oc" commands with the dry-run option set to true',
+                        description: 'Run commands with their dry-run options enabled',
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false,
                     ],

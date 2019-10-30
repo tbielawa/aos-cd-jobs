@@ -49,13 +49,14 @@ node {
     echo("Initializing RHCOS-${params.RHCOS_MIRROR_PREFIX} sync: #${currentBuild.number}")
     build.initialize()
 
-    stage("Version dumps") {
-        buildlib.doozer "--version"
-        sh "which doozer"
-        sh "oc version -o yaml"
-    }
+    // stage("Version dumps") {
+    //     buildlib.doozer "--version"
+    //     sh "which doozer"
+    //     sh "oc version -o yaml"
+    // }
 
     try {
+	stage("Dump artifacts") { build.rhcosSyncPrintArtifacts() }
 	stage("Gen AMI docs") { build.rhcosSyncGenDocs() }
     } catch ( err ) {
         commonlib.email(

@@ -33,8 +33,8 @@ def rhcosSyncPrintArtifacts() {
     def images = []
     dir ( rhcosWorking ) {
 	def meta = readJSON file: 'meta.json', text: ''
+	echo( meta )
     }
-    echo( meta )
 }
 
 def rhcosSyncGenDocs() {

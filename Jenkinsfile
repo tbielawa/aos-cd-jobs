@@ -19,6 +19,7 @@ node {
             [
                 $class : 'ParametersDefinitionProperty',
                 parameterDefinitions: [
+                    commonlib.ocpVersionParam('BUILD_VERSION', '4'),
                     [
                         name: 'RHCOS_MIRROR_PREFIX',
                         description: 'Where to place this release under https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/',

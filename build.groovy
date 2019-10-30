@@ -4,24 +4,38 @@ rhcosWorking = "${env.WORKSPACE}/rhcos_working"
 logLevel = ""
 dryRun = ""
 artifacts = []
-meta = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSVERSION%/meta.json"
+baseUrl = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSBUILD%"
+metaUrl = ""
 
 def initialize() {
-    meta = meta.replace("%OCPVERSION%", params.RHCOS_MIRROR_PREFIX)
-    meta = meta.replace("%RHCOSVERSION%", params.RHCOS_BUILD)
-
-    currentBuild.description += " Meta JSON: ${meta}"
     buildlib.cleanWorkdir(rhcosWorking)
-    if ( params.NOOP) {
+    // Sub in those vars
+    baseUrl = baseUrl.replace("%OCPVERSION%", params.BUILD_VERSION)
+    baseUrl = baseUrl.replace("%RHCOSBUILD%", params.RHCOS_BUILD)
+    // Actual meta.json
+    metaUrl = baseUrl + "/meta.json"
+
+    currentBuild.displayName = "${params.RHCOS_BUILD} - ${params.RHCOS_MIRROR_PREFIX}"
+    currentBuild.description = "Meta JSON: ${metaUrl}"
+
+    if ( params.NOOP ) {
 	dryRun = "--dry-run=true"
 	currentBuild.displayName += " [NOOP]"
     }
 
     dir ( rhcosWorking ) {
-	sh("wget ${meta}")
+	sh("wget ${metaUrl}")
     }
+    artifacts.add("rhcos_working/meta.json")
 }
 
+def rhcosSyncPrintArtifacts() {
+    def images = []
+    dir ( rhcosWorking ) {
+	def meta = readJSON file: 'meta.json', text: ''
+    }
+    echo( meta )
+}
 
 def rhcosSyncGenDocs() {
     dir( rhcosWorking ) {

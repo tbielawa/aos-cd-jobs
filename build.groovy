@@ -4,10 +4,12 @@ rhcosWorking = "${env.WORKSPACE}/rhcos_working"
 logLevel = ""
 dryRun = ""
 artifacts = []
-meta = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-4.2/VERSION/meta.json"
+meta = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSVERSION%/meta.json"
 
 def initialize() {
-    meta = meta.replace("VERSION", params.RHCOS_BUILD)
+    meta = meta.replace("%OCPVERSION%", params.RHCOS_MIRROR_PREFIX)
+    meta = meta.replace("%RHCOSVERSION%", params.RHCOS_BUILD)
+
     currentBuild.description += " Meta JSON: ${meta}"
     buildlib.cleanWorkdir(rhcosWorking)
     if ( params.NOOP) {

@@ -1,15 +1,38 @@
 #!/bin/bash
-set -exuo pipefail
+# set -exo pipefail
 
 # RHCOS version, like 42.80.20190828.2
-VERSION=${1}
+VERSION=
 # Where to put this on the mirror, such as'4.2' or 'pre-release'
-RHCOS_MIRROR_PREFIX=${2}
-# Plain text file with items to download
-SYNCLIST=${3}
+RHCOS_MIRROR_PREFIX=
 FORCE=0
-# Put the items into this directory, we'll have to make it
-DESTDIR="/srv/pub/openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX}/${VERSION}"
+
+function usage() {
+    cat <<EOF
+usage: ${0} [OPTIONS]
+
+This script will create directories under
+https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{--PREFIX}/{--VERSION}/
+containing the items provided in --synclist as well as a sha256sum.txt
+file generated from those items.
+
+Required Options:
+
+  --version        The RHCOS version to mirror (ex: 42.80.20190828.2)
+  --prefix         The parent directory to mirror to (ex: 4.2/pre-release)
+  --synclist       Path to the file of items (URLs) to mirror (whitespace separated)
+
+Optional Options:
+
+  --force          Overwrite existing contents if destination already exists
+  --test           Test inputs, but ensure nothing can ever go out to the mirrors
+
+Don't get tricky! --force and --test have no predictable result if you
+combine them. Just don't try it.
+
+EOF
+}
+
 
 function checkDestDir() {
     if [ -d "${DESTDIR}" ]; then
@@ -46,6 +69,52 @@ function mirror() {
     # Run mirroring push
     /usr/local/bin/push.pub.sh openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX} -v
 }
+
+
+if [ "${#}" -lt "6" ]; then
+    echo "You are missing some required options"
+    usage
+    exit 1
+else
+    echo $@
+
+fi
+
+while [ $1 ]; do
+    case "$1" in
+	"--version")
+	    shift
+	    VERSION=$1;;
+	"--prefix")
+	    shift
+	    RHCOS_MIRROR_PREFIX=$1;;
+	"--synclist")
+	    shift
+	    SYNCLIST=$1;;
+	"--force")
+	    FORCE=1;;
+	"--test")
+	    TEST=1;;
+	"-h" | "--help")
+	    usage
+	    exit 0;;
+	*)
+	    echo "Unrecognized option provided: '${1}', perhaps you need --help"
+	    exit 1;;
+    esac
+    shift
+done
+
+# Put the items into this directory, we might have to make it
+DESTDIR="/srv/pub/openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX}/${VERSION}"
+echo $DESTDIR
+
+echo $VERSION
+echo $RHCOS_MIRROR_PREFIX
+echo $SYNCLIST
+echo $FORCE
+
+exit 0
 
 
 checkDestDir

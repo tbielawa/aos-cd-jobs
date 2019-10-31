@@ -40,7 +40,7 @@ node {
                     ],
                     [
                         name: 'FORCE',
-                        description: 'Download (overwrite) and mirror items even if the destination directory already exists',
+                        description: 'Download (overwrite) and mirror items even if the destination directory already exists\nErases everything already in the target destination.',
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false,
                     ],

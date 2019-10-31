@@ -38,6 +38,12 @@ node {
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false,
                     ],
+                    [
+                        name: 'FORCE',
+                        description: 'Download (overwrite) and mirror items even if the destination directory already exists',
+                        $class: 'BooleanParameterDefinition',
+                        defaultValue: false,
+                    ],
                     commonlib.suppressEmailParam(),
                     commonlib.mockParam(),
                 ],

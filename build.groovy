@@ -34,11 +34,11 @@ def rhcosSyncPrintArtifacts() {
     dir ( rhcosWorking ) {
 	def meta = readJSON file: 'meta.json', text: ''
 	meta.images.eachWithIndex { name, value, i ->
-	    def itemUrl = baseUrl + "/${value.path}"
-	    imageUrls.add(itemUrl)
-	    echo(itemUrl)
+	    imageUrls.add(baseUrl + "/${value.path}")
 	}
     }
+    currentBuild.displayName += " [${imageUrls.size()} Images]"
+    echo(imageUrls.toString())
 }
 
 def rhcosSyncGenDocs() {

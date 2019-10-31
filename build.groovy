@@ -30,10 +30,12 @@ def initialize() {
 }
 
 def rhcosSyncPrintArtifacts() {
-    def images = []
+    def imageUrls = []
     dir ( rhcosWorking ) {
 	def meta = readJSON file: 'meta.json', text: ''
-	echo( meta )
+	meta.images.each { image ->
+	    echo("${image.path}")
+	}
     }
 }
 

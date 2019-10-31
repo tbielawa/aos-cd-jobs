@@ -27,40 +27,25 @@ function checkDestDir() {
     fi
 }
 
-
 function downloadImages() {
-    # Downloading
-    #
-    # Switch into DESTDIR
-    #
-    # run wget --tries=20 (normally it considers 'conn refused' and 'not
-    # found' as unrecoverable), also use --waitretry=15 in case the remote
-    # host is being flakey. Basically, give this every possible
-    # opportunity to pass if something is flaking out.
-    #
-    # cat $SYNCLIST | xargs wget --options
-    :
+    for img in $(<${SYNCLIST}); do
+	curl --retry 5 -O $img
+    done
 }
-
 
 function genSha256() {
-    # Gotta make that sha!
-    :
+    sha256sum * > sha256sum.txt
 }
 
-
 function updateSymlinks() {
-    :
-    # Update symlinks
-    #
-    # go to parent dir. rm `latest`. ln -s $VERSION latest
+    rm latest
+    ln -s $VERSION latest
 }
 
 function mirror() {
     # Run mirroring push
     /usr/local/bin/push.pub.sh openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX} -v
 }
-
 
 
 checkDestDir

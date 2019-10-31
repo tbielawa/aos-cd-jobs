@@ -24,7 +24,7 @@ node {
                         name: 'RHCOS_MIRROR_PREFIX',
                         description: 'Where to place this release under https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/',
                         $class: 'hudson.model.ChoiceParameterDefinition',
-                        choices: (['pre-release'] + commonlib.ocp4Versions),
+                        choices: (['pre-release', 'test'] + commonlib.ocp4Versions),
                     ],
                     [
                         name: 'RHCOS_BUILD',

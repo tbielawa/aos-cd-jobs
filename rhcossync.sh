@@ -42,7 +42,7 @@ function genSha256() {
 }
 
 
-function updateSymlinks(){
+function updateSymlinks() {
     :
     # Update symlinks
     #
@@ -53,3 +53,14 @@ function mirror() {
     # Run mirroring push
     /usr/local/bin/push.pub.sh openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX} -v
 }
+
+
+
+checkDestDir
+pushd $DESTDIR
+downloadImages
+genSha256
+cd ..
+updateSymlinks
+popd
+mirror

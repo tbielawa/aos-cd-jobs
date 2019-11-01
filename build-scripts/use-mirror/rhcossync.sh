@@ -20,7 +20,7 @@ file generated from those items.
 
 Required Options:
 
-  --version        The RHCOS version to mirror (ex: 42.80.20190828.2)
+  --version        The RHCOS version to mirror (ex: 4.2.0, 4.2.0-0.nightly-2019-08-28-152644)
   --prefix         The parent directory to mirror to (ex: 4.1, 4.2, pre-release)
   --synclist       Path to the file of items (URLs) to mirror (whitespace separated)
   --basedir        Base filesystem path in which the --PREFIX/--VERSION directories exist
@@ -130,7 +130,7 @@ fi
 
 cat <<EOF
 Dest Dir: ${DESTDIR}
-RHCOS Version: ${VERSION}
+RHCOS OCP Version: ${VERSION}
 MIRROR Prefix: ${RHCOS_MIRROR_PREFIX}
 Sync List: ${SYNCLIST}
 Force: ${FORCE}

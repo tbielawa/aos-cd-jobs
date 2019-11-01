@@ -21,6 +21,12 @@ node {
                 parameterDefinitions: [
                     commonlib.ocpVersionParam('BUILD_VERSION', '4'),
                     [
+                        name: 'NAME',
+                        description: 'The release name, like 4.2.0, or 4.2.0-0.nightly-2019-08-28-152644',
+                        $class: 'hudson.model.StringParameterDefinition',
+                        defaultValue: "",
+                    ],
+                    [
                         name: 'RHCOS_MIRROR_PREFIX',
                         description: 'Where to place this release under https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/',
                         $class: 'hudson.model.ChoiceParameterDefinition',

@@ -17,7 +17,9 @@ def initialize() {
     // Actual meta.json
     metaUrl = baseUrl + "/meta.json"
 
-    currentBuild.displayName = "${params.RHCOS_BUILD} - ${params.RHCOS_MIRROR_PREFIX}"
+    name = params.NAME
+
+    currentBuild.displayName = "${params.NAME} - ${params.RHCOS_BUILD} - ${params.RHCOS_MIRROR_PREFIX}"
     currentBuild.description = "Meta JSON: ${metaUrl}"
 
     if ( params.NOOP ) {
@@ -52,7 +54,7 @@ def rhcosSyncPrintArtifacts() {
 
 def rhcosSyncMirrorArtifacts() {
     sh("scp -o StrictHostKeychecking=no ${syncList} use-mirror-upload.ops.rhcloud.com:/tmp/")
-    def invokeOpts = "-- --prefix ${params.RHCOS_MIRROR_PREFIX} --version ${params.BUILD_VERSION} --synclist /tmp/${syncList} --basedir ${baseDir}"
+    def invokeOpts = "-- --prefix ${params.RHCOS_MIRROR_PREFIX} --version ${params.NAME} --synclist /tmp/${syncList} --basedir ${baseDir}"
     if ( params.FORCE ) {
 	invokeOpts += " --force"
     }

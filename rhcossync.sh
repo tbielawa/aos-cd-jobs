@@ -74,16 +74,19 @@ function updateSymlinks() {
 
 function mirror() {
     # Run mirroring push
-    /usr/local/bin/push.pub.sh openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX} -v
+    PUSHARG=`echo ${BASEDIR} | cut -d/ -f4-`
+    echo "PUSH ARGUMENT: ${PUSHARG}"
+    /usr/local/bin/push.pub.sh ${PUSHARG}/${RHCOS_MIRROR_PREFIX} -v
 }
 
+######################################################################
+# Begin main script
 
 if [ "${#}" -lt "8" ]; then
+    # Not the best check, but basic enough
     echo "You are missing some required options"
     usage
     exit 1
-else
-    echo $@
 fi
 
 while [ $1 ]; do
@@ -140,4 +143,8 @@ genSha256
 cd ..
 updateSymlinks
 popd
-mirror
+if [ $TEST -eq 0 ]; then
+    mirror
+else
+    echo "INFO: Not running sync script because --test was given"
+fi

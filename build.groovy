@@ -6,6 +6,7 @@ dryRun = ""
 artifacts = []
 baseUrl = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSBUILD%"
 metaUrl = ""
+baseDir = "/srv/pub/openshift-v4/dependencies/rhcos"
 
 def initialize() {
     buildlib.cleanWorkdir(rhcosWorking)
@@ -39,6 +40,13 @@ def rhcosSyncPrintArtifacts() {
     }
     currentBuild.displayName += " [${imageUrls.size()} Images]"
     echo(imageUrls.toString())
+}
+
+def rhcosSyncMirrorArtifacts() {
+    buildlib.invoke_on_use_mirror(
+	"rhcossync.sh",
+	["--prefix"]
+    )
 }
 
 def rhcosSyncGenDocs() {

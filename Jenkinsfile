@@ -62,7 +62,7 @@ node {
     build.initialize()
 
     try {
-	if ( params.SYNC_LIST != "" ) {
+	if ( params.SYNC_LIST == "" ) {
 	    stage("Get/Generate sync list") { build.rhcosSyncPrintArtifacts() }
 	} else {
 	    stage("Get/Generate sync list") { build.rhcosSyncManualInput() }

@@ -152,11 +152,15 @@ genSha256
 cd ..
 if [ $NOLATEST -eq 0 ]; then
     updateSymlinks
+else
+    echo "INFO: Not updating 'latest' symlink because --nolatest was given"
 fi
 popd
 if [ $TEST -eq 0 ]; then
     if [ $NOMIRROR -eq 0 ]; then
 	mirror
+    else
+	echo "INFO: Not running push.pub command because --nomirror was given"
     fi
 else
     echo "INFO: Not running sync script because --test was given"

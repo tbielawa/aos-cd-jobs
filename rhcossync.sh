@@ -7,6 +7,7 @@ VERSION=
 RHCOS_MIRROR_PREFIX=
 FORCE=0
 TEST=0
+BASEDIR=
 
 function usage() {
     cat <<EOF
@@ -22,6 +23,7 @@ Required Options:
   --version        The RHCOS version to mirror (ex: 42.80.20190828.2)
   --prefix         The parent directory to mirror to (ex: 4.2/pre-release)
   --synclist       Path to the file of items (URLs) to mirror (whitespace separated)
+  --basedir        Base filesystem path in which the --PREFIX/--VERSION directories exist
 
 Optional Options:
 
@@ -76,7 +78,7 @@ function mirror() {
 }
 
 
-if [ "${#}" -lt "6" ]; then
+if [ "${#}" -lt "8" ]; then
     echo "You are missing some required options"
     usage
     exit 1
@@ -95,6 +97,9 @@ while [ $1 ]; do
 	"--synclist")
 	    shift
 	    SYNCLIST=`realpath $1`;;
+        "--basedir")
+	    shift
+	    BASEDIR=$1;;
 	"--force")
 	    FORCE=1;;
 	"--test")
@@ -115,7 +120,7 @@ if [ $TEST -eq 1 ]; then
     mkdir -p ${DESTDIR}
 else
     # Put the items into this directory, we might have to make it
-    DESTDIR="/srv/pub/openshift-v4/dependencies/rhcos/${RHCOS_MIRROR_PREFIX}/${VERSION}"
+    DESTDIR="${BASEDIR}/${RHCOS_MIRROR_PREFIX}/${VERSION}"
     checkDestDir
 fi
 
@@ -126,8 +131,8 @@ MIRROR Prefix: ${RHCOS_MIRROR_PREFIX}
 Sync List: ${SYNCLIST}
 Force: ${FORCE}
 Test: ${TEST}
+Basedir: ${BASEDIR}
 EOF
-
 
 pushd $DESTDIR
 downloadImages

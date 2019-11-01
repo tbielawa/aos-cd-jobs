@@ -100,7 +100,7 @@ while [ $1 ]; do
 	    RHCOS_MIRROR_PREFIX=$1;;
 	"--synclist")
 	    shift
-	    SYNCLIST=`realpath $1`;;
+	    SYNCLIST=$1;;
         "--basedir")
 	    shift
 	    BASEDIR=$1;;

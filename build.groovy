@@ -7,7 +7,7 @@ artifacts = []
 baseUrl = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSBUILD%"
 metaUrl = ""
 baseDir = "/srv/pub/openshift-v4/dependencies/rhcos"
-syncList = "/tmp/rhcos-synclist-${currentBuild.number}.txt"
+syncList = "rhcos-synclist-${currentBuild.number}.txt"
 
 def initialize() {
     buildlib.cleanWorkdir(rhcosWorking)
@@ -31,6 +31,10 @@ def initialize() {
     artifacts.add("rhcos_working/meta.json")
 }
 
+def rhcosSyncManualInput() {
+    sh("wget ${params.SYNC_LIST} -O ${syncList}")
+}
+
 def rhcosSyncPrintArtifacts() {
     def imageUrls = []
     dir ( rhcosWorking ) {
@@ -41,6 +45,7 @@ def rhcosSyncPrintArtifacts() {
     }
     currentBuild.displayName += " [${imageUrls.size()} Images]"
     echo(imageUrls.toString())
+    writeFile file: syncList, text: "${imageUrls.join('\n')}"
 }
 
 def rhcosSyncMirrorArtifacts() {

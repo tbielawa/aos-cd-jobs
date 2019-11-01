@@ -34,9 +34,15 @@ node {
                     ],
                     [
                         name: 'NOOP',
-                        description: 'Run commands with their dry-run options enabled',
+                        description: 'Run commands with their dry-run options enabled (test everything)',
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false,
+                    ],
+                    [
+                        name: 'SYNC_LIST',
+                        description: 'Instead of figuring out items to sync from meta.json, use this input file. Must be a URL reachable from buildvm.',
+                        $class: 'hudson.model.StringParameterDefinition',
+                        defaultValue: "",
                     ],
                     [
                         name: 'FORCE',
@@ -55,14 +61,13 @@ node {
     echo("Initializing RHCOS-${params.RHCOS_MIRROR_PREFIX} sync: #${currentBuild.number}")
     build.initialize()
 
-    // stage("Version dumps") {
-    //     buildlib.doozer "--version"
-    //     sh "which doozer"
-    //     sh "oc version -o yaml"
-    // }
-
     try {
-	stage("Dump artifacts") { build.rhcosSyncPrintArtifacts() }
+	if ( params.SYNC_LIST != "" ) {
+	    stage("Get/Generate sync list") { build.rhcosSyncPrintArtifacts() }
+	} else {
+	    stage("Get/Generate sync list") { build.rhcosSyncManualInput() }
+	}
+	stage("Mirror artifacts") { build.rhcosSyncMirrorArtifacts() }
 	stage("Gen AMI docs") { build.rhcosSyncGenDocs() }
     } catch ( err ) {
         commonlib.email(

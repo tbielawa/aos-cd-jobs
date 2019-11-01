@@ -8,6 +8,8 @@ RHCOS_MIRROR_PREFIX=
 FORCE=0
 TEST=0
 BASEDIR=
+NOLATEST=0
+NOMIRROR=0
 
 function usage() {
     cat <<EOF
@@ -29,6 +31,8 @@ Optional Options:
 
   --force          Overwrite existing contents if destination already exists
   --test           Test inputs, but ensure nothing can ever go out to the mirrors
+  --nolatest       Do not update the 'latest' symlink after downloading
+  --nomirror       Do not run the push.pub script after downloading
 
 Don't get tricky! --force and --test have no predictable result if you
 combine them. Just don't try it.
@@ -108,6 +112,10 @@ while [ $1 ]; do
 	    FORCE=1;;
 	"--test")
 	    TEST=1;;
+	"--nolatest")
+	    NOLATEST=1;;
+	"--nomirror")
+	    NOMIRROR=1;;
 	"-h" | "--help")
 	    usage
 	    exit 0;;
@@ -142,10 +150,14 @@ pushd $DESTDIR
 downloadImages
 genSha256
 cd ..
-updateSymlinks
+if [ $NOLATEST -eq 0 ]; then
+    updateSymlinks
+fi
 popd
 if [ $TEST -eq 0 ]; then
-    mirror
+    if [ $NOMIRROR -eq 0 ]; then
+	mirror
+    fi
 else
     echo "INFO: Not running sync script because --test was given"
     echo "INFO: Cleaning up temporary dir now"

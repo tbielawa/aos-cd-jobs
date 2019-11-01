@@ -56,6 +56,18 @@ node {
                         $class: 'BooleanParameterDefinition',
                         defaultValue: false,
                     ],
+                    [
+                        name: 'NO_LATEST',
+                        description: 'Do not update the "latest" symlink after downloading',
+                        $class: 'BooleanParameterDefinition',
+                        defaultValue: false,
+                    ],
+                    [
+                        name: 'NO_MIRROR',
+                        description: 'Do not run the push.pub script after downloading"',
+                        $class: 'BooleanParameterDefinition',
+                        defaultValue: false,
+                    ],
                     commonlib.suppressEmailParam(),
                     commonlib.mockParam(),
                 ],

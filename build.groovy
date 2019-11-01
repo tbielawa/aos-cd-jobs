@@ -61,6 +61,12 @@ def rhcosSyncMirrorArtifacts() {
     if ( params.NOOP ) {
 	invokeOpts += " --test"
     }
+    if ( params.NO_LATEST ) {
+	invokeOpts += " --nolatest"
+    }
+    if ( params.NO_MIRROR ) {
+	invokeOpts += " --nomirror"
+    }
 
     buildlib.invoke_on_use_mirror("rhcossync.sh", invokeOpts)
 }

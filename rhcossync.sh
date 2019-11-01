@@ -1,5 +1,5 @@
 #!/bin/bash
-# set -exo pipefail
+set -exo pipefail
 
 # RHCOS version, like 42.80.20190828.2
 VERSION=
@@ -130,12 +130,9 @@ EOF
 
 
 pushd $DESTDIR
-pwd
-
-
 downloadImages
 genSha256
 cd ..
 updateSymlinks
-# popd
-# mirror
+popd
+mirror

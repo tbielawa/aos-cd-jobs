@@ -7,6 +7,7 @@ artifacts = []
 baseUrl = "https://releases-rhcos-art.cloud.privileged.psi.redhat.com/storage/releases/rhcos-%OCPVERSION%/%RHCOSBUILD%"
 metaUrl = ""
 baseDir = "/srv/pub/openshift-v4/dependencies/rhcos"
+syncList = "/tmp/rhcos-synclist-${currentBuild.number}.txt"
 
 def initialize() {
     buildlib.cleanWorkdir(rhcosWorking)
@@ -43,10 +44,16 @@ def rhcosSyncPrintArtifacts() {
 }
 
 def rhcosSyncMirrorArtifacts() {
-    buildlib.invoke_on_use_mirror(
-	"rhcossync.sh",
-	["--prefix"]
-    )
+    def invokeOpts = ["--prefix", params.RHCOS_MIRROR_PREFIX, "--version", params.BUILD_VERSION,
+		      "--synclist", syncList, "--basedir", baseDir]
+    if ( params.FORCE ) {
+	invokeOpts.add("--force")
+    }
+    if ( params.NOOP ) {
+	invokeOpts.add("--test")
+    }
+
+    buildlib.invoke_on_use_mirror("rhcossync.sh", invokeOpts)
 }
 
 def rhcosSyncGenDocs() {

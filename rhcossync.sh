@@ -21,7 +21,7 @@ file generated from those items.
 Required Options:
 
   --version        The RHCOS version to mirror (ex: 42.80.20190828.2)
-  --prefix         The parent directory to mirror to (ex: 4.2/pre-release)
+  --prefix         The parent directory to mirror to (ex: 4.1, 4.2, pre-release)
   --synclist       Path to the file of items (URLs) to mirror (whitespace separated)
   --basedir        Base filesystem path in which the --PREFIX/--VERSION directories exist
 
@@ -34,9 +34,8 @@ Don't get tricky! --force and --test have no predictable result if you
 combine them. Just don't try it.
 
 When using --test files will be downloaded to an alternative location
-under /tmp/. This location will be erased.
-
-
+under /tmp/. The downloaded items and the sha256sum.txt file will be
+printed and then the temporary directory will be erased.
 EOF
 }
 
@@ -65,6 +64,8 @@ function downloadImages() {
 
 function genSha256() {
     sha256sum * > sha256sum.txt
+    ls -lh
+    cat sha256sum.txt
 }
 
 function updateSymlinks() {
@@ -147,4 +148,6 @@ if [ $TEST -eq 0 ]; then
     mirror
 else
     echo "INFO: Not running sync script because --test was given"
+    echo "INFO: Cleaning up temporary dir now"
+    rm -fR $TMPDIR
 fi

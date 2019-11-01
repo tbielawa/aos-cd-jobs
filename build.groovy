@@ -26,7 +26,7 @@ def initialize() {
     }
 
     dir ( rhcosWorking ) {
-	if ( params.SYNC_LIST != "" ) {
+	if ( params.SYNC_LIST == "" ) {
 	    sh("wget ${metaUrl}")
 	    artifacts.add("meta.json")
 	}

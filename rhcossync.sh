@@ -59,7 +59,7 @@ function checkDestDir() {
 
 function downloadImages() {
     for img in $(<${SYNCLIST}); do
-	curl --retry 5 -O $img
+	curl -L --retry 5 -O $img
     done
 }
 

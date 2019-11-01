@@ -40,7 +40,7 @@ node {
                     ],
                     [
                         name: 'SYNC_LIST',
-                        description: 'Instead of figuring out items to sync from meta.json, use this input file. Must be a URL reachable from buildvm.',
+                        description: 'Instead of figuring out items to sync from meta.json, use this input file.\nMust be a URL reachable from buildvm, contents must be reachable from use-mirror-upload',
                         $class: 'hudson.model.StringParameterDefinition',
                         defaultValue: "",
                     ],

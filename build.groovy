@@ -26,9 +26,11 @@ def initialize() {
     }
 
     dir ( rhcosWorking ) {
-	sh("wget ${metaUrl}")
+	if ( params.SYNC_LIST != "" ) {
+	    sh("wget ${metaUrl}")
+	    artifacts.add("meta.json")
+	}
     }
-    artifacts.add("rhcos_working/meta.json")
 }
 
 def rhcosSyncManualInput() {

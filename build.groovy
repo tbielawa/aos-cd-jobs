@@ -35,7 +35,7 @@ def crcDownloadRelease() {
 // Maybe rsync this stuff to the use-mirror staging ground. Noop mode
 // will just show you what would have been synced.
 def crcRsyncRelease() {
-    def dest = "use-mirror-upload.ops.rhcloud.com:/srv/pub/openshift-v4/clients/crc/"
+    def dest = "use-mirror-upload.ops.rhcloud.com:/srv/pub/openshift-v4/clients/crc"
     def dry = params.DRY_RUN ? '--dry-run' : ''
     // The --exclude's remove the commonlib.shell directory files and
     // the index.html files from the files to be transferred

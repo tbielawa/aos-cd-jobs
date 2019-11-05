@@ -1,14 +1,15 @@
 buildlib = load("pipeline-scripts/buildlib.groovy")
 commonlib = buildlib.commonlib
 workdir = "crc"
-sourceDomain = "cdk-builds.usersys.redhat.com"
+// sourceDomain = "cdk-builds.usersys.redhat.com"
+sourceDomain = "file.rdu.redhat.com"
 releaseVer = ''
 
 def initialize() {
     buildlib.cleanWorkdir(workdir)
-    if ( !params.RELEASE_URL.contains(sourceDomain) ) {
-	error("RELEASE_URL is not the expected host: ${sourceDomain}")
-    }
+    // if ( !params.RELEASE_URL.contains(sourceDomain) ) {
+    // 	error("RELEASE_URL is not the expected host: ${sourceDomain}")
+    // }
 
     releaseVer = params.RELEASE_URL.split('/')[-1]
     currentBuild.displayName += "${params.DRY_RUN ? '[NOOP]' : ''} ${releaseVer}"

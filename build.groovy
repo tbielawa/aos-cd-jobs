@@ -40,7 +40,7 @@ def crcRsyncRelease() {
     def dry = params.DRY_RUN ? '--dry-run' : ''
     // The --exclude's remove the commonlib.shell directory files and
     // the index.html files from the files to be transferred
-    cmd = "rsync ${dry} -av --delete-after --exclude='shell' --exclude='index*' --progress --no-g --omit-dir-times --chmod=Dug=rwX -e 'ssh -l jenkins_aos_cd_bot -o StrictHostKeyChecking=no' ${workdir}/ ${dest}"
+    cmd = "rsync ${dry} -av --delete-after --exclude='shell' --exclude='index*' --progress --no-g --omit-dir-times --chmod=Dug=rwX -e 'ssh -l jenkins_aos_cd_bot -o StrictHostKeyChecking=no' ${workdir}/${releaseVer} ${workdir}/latest ${dest}"
     commonlib.shell(
 	script: cmd,
 	returnAll: true

@@ -149,7 +149,7 @@ def buildSyncApplyImageStreams() {
 // purposes.
 def getImageStream(is, arch) {
     def a = (arch == "x86_64")? "ocp": "ocp-${arch}"
-    def isJson = readJSON(text: buildlib.oc(" get is ${is} -n ${a} -o json --kubeconfig ${ciKubeconfig}", [capture: true]).stdout)
+    def isJson = readJSON(text: buildlib.oc(" get is ${is} -n ${a} -o json --kubeconfig ${ciKubeconfig}", [capture: true]))
     return isJson
 }
 

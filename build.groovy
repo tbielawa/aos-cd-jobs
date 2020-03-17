@@ -120,7 +120,7 @@ def buildSyncApplyImageStreams() {
 
         // Get the current IS and save it to disk. We may need this for debugging.
         def currentIS = getImageStream(theStream, arch)
-        writeJSON(file: "pre-apply-${theStream}.json", input: currentIS)
+        writeJSON(file: "pre-apply-${theStream}.json", json: currentIS)
         artifacts.addAll(["pre-apply-${theStream}.json"])
 
         // We check for updates by comparing the object's 'generation'
@@ -134,7 +134,7 @@ def buildSyncApplyImageStreams() {
 
         // Now we verify that the change went through and save the bits as we go
         def newIS = getImageStream(theStream, arch)
-        writeJSON(file: "post-apply-${theStream}.json", input: newIS)
+        writeJSON(file: "post-apply-${theStream}.json", json: newIS)
         artifacts.addAll(["post-apply-${theStream}.json"])
         def newGeneration = newIS.metadata.generation
         if ( newGeneration == currentGeneration ) {

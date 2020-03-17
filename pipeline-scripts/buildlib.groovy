@@ -2,6 +2,7 @@
 
 commonlib = load("pipeline-scripts/commonlib.groovy")
 commonlib.initialize()
+slacklib = commonlib.slacklib
 
 GITHUB_URLS = [:]
 GITHUB_BASE_PATHS = [:]
@@ -92,8 +93,8 @@ def initialize_openshift_dir() {
 
 def cleanWhitespace(cmd) {
     return (cmd
-        .replaceAll( '\\\n', ' ' ) // If caller included line continuation characters, remove them
-        .replaceAll( '\n', ' ' ) // Allow newlines in command for readability, but don't let them flow into the sh
+        .replaceAll( ' *\\\n *', ' ' ) // If caller included line continuation characters, remove them
+        .replaceAll( ' *\n *', ' ' ) // Allow newlines in command for readability, but don't let them flow into the sh
         .trim()
     )
 }
@@ -724,6 +725,33 @@ def build_ami(major, minor, version, release, yum_base_url, ansible_branch, mail
     }
 }
 
+/**
+ * Trigger sweep job.
+ *
+ * @param String buildVersion: OCP build version (e.g. 4.2, 4.1, 3.11)
+ * @param Boolean sweepBuilds: Enable/disable build sweeping
+ */
+def sweep(String buildVersion, Boolean sweepBuilds) {
+    def sweepJob = build(
+        job: 'build%2Fsweep',
+        propagate: false,
+        parameters: [
+            string(name: 'BUILD_VERSION', value: buildVersion),
+            booleanParam(name: 'SWEEP_BUILDS', value: sweepBuilds),
+        ]
+    )
+    if (sweepJob.result != 'SUCCESS') {
+        commonlib.email(
+            replyTo: 'aos-art-team@redhat.com',
+            to: 'aos-art-automation+failed-sweep@redhat.com',
+            from: 'aos-art-automation@redhat.com',
+            subject: "Problem sweeping after ${currentBuild.displayName}",
+            body: "Jenkins console: ${commonlib.buildURL('console')}",
+        )
+        currentBuild.result = 'UNSTABLE'
+    }
+}
+
 def sync_images(major, minor, mail_list, build_number) {
     // Run an image sync after a build. This will mirror content from
     // internal registries to quay. After a successful sync an image
@@ -1170,6 +1198,16 @@ def extractBuildVersion(build) {
 def determineBuildVersion(stream, branch, versionParam) {
     def version = "${stream}.0"  // default
 
+    def streamSegments = stream.tokenize(".").collect { it.toInteger() }
+    def major = streamSegments[0]
+    def minor = streamSegments[1]
+
+    // As of 4.4, let's try 4.x for everything (doozer will add patch version).
+    if (major >=4 && minor >= 4) {
+        echo "Forcing version ${stream} which is convention for this major.minor."
+        return stream
+    }
+
     def prevBuild = latestOpenshiftRpmBuild(stream, branch)
     if(versionParam == "+") {
         // increment previous build version
@@ -1252,6 +1290,51 @@ def assertBuildPermitted(doozerOpts) {
         currentBuild.description = 'Builds not permitted'
         error('This build is being terminated because it is not permitted according to current group.yml')
     }
+}
+
+/**
+ * Run elliott find-builds and attach to given advisory.
+ * It looks for builds twice (rhel-7 and rhel-8) for OCP 4.y
+ * Side-effect: Advisory states are changed to "NEW FILES" in order to attach builds.
+ *
+ * @param String[] kinds: List of build kinds you want to find (e.g. ["rpm", "image"])
+ * @param String buildVersion: OCP build version (e.g. 4.2, 4.1, 3.11)
+ */
+def attachBuildsToAdvisory(kinds, buildVersion) {
+    def groupOpt = "-g openshift-${buildVersion}"
+
+    try {
+        if ("rpm" in kinds) {
+            elliott("${groupOpt} change-state -s NEW_FILES --use-default-advisory rpm")
+            elliott("${groupOpt} find-builds -k rpm --use-default-advisory rpm")
+        }
+        if ("image" in kinds) {
+            elliott("${groupOpt} change-state -s NEW_FILES --use-default-advisory image")
+            elliott("${groupOpt} find-builds -k image --use-default-advisory image")
+        }
+    } catch (err) {
+        currentBuild.description += "ERROR: ${err}"
+        error("elliott find-builds failed: ${err}")
+    }
+}
+
+
+/**
+ * Scans data outputted by config:scan-sources yaml and records changed
+ * elements in the object it returns which has a .rpms list and an .images list.
+ * The lists are empty if no change was detected.
+ */
+@NonCPS
+def getChanges(yamlData) {
+    def changed = ["rpms": [], "images": []]
+    changed.each { kind, list ->
+        yamlData[kind].each {
+            if (it["changed"]) {
+                list.add(it["name"])
+            }
+        }
+    }
+    return changed
 }
 
 return this

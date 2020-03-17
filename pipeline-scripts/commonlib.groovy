@@ -1,36 +1,32 @@
+slacklib = load("pipeline-scripts/slacklib.groovy")
+
 ocp3DefaultVersion = "3.11"
 ocp3Versions = [
     "3.11",
     "3.10",
     "3.9",
-    "3.8",
-    "3.7",
-    "3.6",
-    "3.5",
-    "3.4",
-    "3.3",
-    "3.2",
-    "3.1",
 ]
 
-ocp4DefaultVersion = "4.3"
-// Determines which version is currently the master branch:
-// update when development switches streams
+// Which version of ocp4 build parameters should show by default
+ocp4DefaultVersion = "4.5"
+
+// All buildable versions of ocp4
 ocp4Versions = [
+    "4.5",
     "4.4",
     "4.3",
     "4.2",
     "4.1",
 ]
 
+// Which versions should undergo merges from origin->ose
 ocpMergeVersions = [
+    "4.5",
     "4.4",
     "4.3",
     "4.2",
     "4.1",
     "3.11",
-    "3.10",
-    "3.9",
 ]
 
 ocpDefaultVersion = ocp4DefaultVersion
@@ -331,6 +327,17 @@ def extractMajorMinorVersionNumbers(String version) {
     return (version =~ /^(\d+)\.(\d+)/)[0].subList(1,3).collect { it as int }
 }
 
+/**
+    Returns the architecture name extracted from a release name.
+    Only known architecture names are recognized, defaulting to `defaultArch`.
+    e.g.
+        "4.4.0-0.nightly-ppc64le-2019-11-06-041852" => "ppc64le"
+        "4.4.0-0.nightly-s390x-2019-11-06-041852" => "s390x"
+        "4.4.0-0.nightly-2019-11-06-041852" => "x86_64"
+*/
+def extractArchFromReleaseName(String release, String defaultArch='x86_64') {
+    return (release =~ /(x86_64|ppc64le|s390x)?$/)[0][1] ?: defaultArch
+}
 
 /**
  * Attempts, for a specified duration, to claim a Jenkins lock. If claimed, the
@@ -354,6 +361,79 @@ def canLock(lockName, timeout_seconds=10) {
         echo "Timeout waiting for lock ${lockName}"
     }
     return claimed
+}
+
+/**
+ * Each OCP architecture gets its own release controller. They are hosted
+ * on different routes. This method returns a URL based on the name of the
+ * release stream you want to query.
+ * @param releaseStreamName - e.g. 4-stable or 4-stable-s390x
+ * @return Returns something like "https://openshift-release-s390x.svc.ci.openshift.org"
+ */
+def getReleaseControllerURL(releaseStreamName) {
+    def archSuffix = ''
+    def streamNameComponents = releaseStreamName.split('-') // e.g. ['4', 'stable', 's390x']  or [ '4', 'stable' ]
+    if ('s390x' in streamNameComponents) {
+        archSuffix = "-s390x" // e.g. -s390x
+    } else if ('ppc64le' in streamNameComponents) {
+        archSuffix = "-ppc64le"
+    }
+    return "https://openshift-release${archSuffix}.svc.ci.openshift.org"
+}
+
+def inputRequired(cl) {
+    def oldName = currentBuild.displayName
+    try {
+        currentBuild.displayName = "INPUT REQUIRED: ${oldName}"
+        cl()
+    } finally {
+        currentBuild.displayName = oldName
+    }
+}
+
+def retrySkipAbort(goal, prompt='', slackOutput=null, cl) {
+    def success = false
+    if (!slackOutput) {
+        slackOutput = slacklib.to(null)
+    }
+    while( !success ) {
+        try {
+            cl()
+            success = true
+        } catch ( retry_e ) {
+            def description = "Problem encountered during: ${goal} => ${retry_e}"
+            echo "${description}"
+            slackOutput.failure("[INPUT REQUIRED] ${description}")
+            inputRequired() {
+
+                if ( ! prompt ) {
+                    prompt = "Problem encountered during: ${goal}"
+                }
+
+                def resp = input message: prompt,
+                    parameters: [
+                        [
+                            $class     : 'hudson.model.ChoiceParameterDefinition',
+                            choices    : ['RETRY', 'SKIP', 'ABORT'].join('\n'),
+                            description : 'Retry this goal, Skip this goal, or Abort the pipeline',
+                            name       : 'action'
+                        ]
+                    ]
+
+                def action = (resp instanceof String)?resp:resp.action
+
+                switch(action) {
+                case 'RETRY':
+                    break
+                case 'SKIP':
+                    success = true  // fake it
+                    break
+                case 'ABORT':
+                    error('User chose to abort retries of: ${goal}')
+                }
+            }
+        }
+    }
 }
 
 return this

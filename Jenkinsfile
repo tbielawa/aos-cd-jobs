@@ -162,6 +162,10 @@ node {
                             throw exc
                         }
 
+			echo("We made it! That shouldn't have happened in this test though....")
+			error("Byeee")
+
+
                         def openshiftJsonSignParams = buildlib.cleanWhitespace("""
                              ${baseUmbParams} --product openshift --arch ${params.ARCH} --client-type ${params.CLIENT_TYPE}
                              --request-id 'openshift-json-digest-${env.BUILD_ID}${requestIdSuffix}' ${digestParam} ${noop}

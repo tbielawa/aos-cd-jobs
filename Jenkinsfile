@@ -150,7 +150,7 @@ node {
                         // Does the required sha256sum.txt file exist yet?
                         def shaFile = "https://mirror.openshift.com/pub/openshift-v4/${params.ARCH}/clients/${params.CLIENT_TYPE}/${params.NAME}/sha256sum.txt"
                         try{
-                            echo("Checking if required sha256sum.txt file exists yet (will try up to 5 times)")
+                            echo("Checking if required sha256sum.txt file exists")
                             httpRequest(
                                 httpMode: 'HEAD',
                                 responseHandle: 'NONE',
@@ -158,13 +158,9 @@ node {
                             )
                         } catch (exc) {
                             echo("ERROR: Required sha256sum.txt file is missing")
-                            echo("Expected to find: ${shaFile}")
-                            throw exc
+                            currentBuild.description += "\nCould not submit OpenShift signing requests, the required sha256sum.txt file is missing"
+                            error("Expected to find: ${shaFile} but it was missing")
                         }
-
-			echo("We made it! That shouldn't have happened in this test though....")
-			error("Byeee")
-
 
                         def openshiftJsonSignParams = buildlib.cleanWhitespace("""
                              ${baseUmbParams} --product openshift --arch ${params.ARCH} --client-type ${params.CLIENT_TYPE}

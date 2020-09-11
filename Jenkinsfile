@@ -53,8 +53,8 @@ node {
         parameters screen to disable the rules.
 
         <h2>Parameters</h2>
-        <ul>
-          <b>DRY_RUN</b> - Only <b>check</b> if the rules are presently enforcing
+        <ul><b>DRY_RUN</b> - Only <b>check</b> if the rules are presently enforcing
+
           <b>DISABLE</b> - <b>Temporarily</b> turn off the firewall
         </ul>
     """)

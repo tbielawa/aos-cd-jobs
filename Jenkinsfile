@@ -57,61 +57,88 @@ node {
     commonlib.checkMock()
     needApplied = false
     reapplied = false
-    notifyChannel = '#team-art'
+    disabled = false
+    if ( !env.JOB_NAME.startsWith("aos-cd-builds/") ) {
+        notifyChannel = '#team-art'
+    } else {
+        notifyChannel = '#art-bot-test'
+    }
 
     // ######################################################################
     // Check if the firewall rules are presently enforcing. If they
     // are enforcing then we should not be able to query random hosts
     // not on the allowed list.
     stage ("Check state") {
-	try {
-	    def extAccess = httpRequest(responseHandle: 'NONE',
-					url: 'https://www.yahoo.com',
-					timeout: 15)
-	    needApplied = true
-	    if ( params.DRY_RUN ) {
-		currentBuild.displayName = "[NOOP] - Needs enforcing"
-	    } else {
-		currentBuild.displayName = "Needs enforcing"
-	    }
-	} catch (ex) {
-	    echo "Firewall is already enforcing"
-	    if ( params.DRY_RUN ) {
-		currentBuild.displayName = "[NOOP] - Already enforcing"
-	    } else {
-		currentBuild.displayName = "Already enforcing"
-	    }
-	}
+        // No reason to check the state if we're just going to turn it off
+        if ( !DISABLE ) {
+            try {
+                def extAccess = httpRequest(responseHandle: 'NONE',
+                                            url: 'https://www.yahoo.com',
+                                            timeout: 15)
+                needApplied = true
+                if ( params.DRY_RUN ) {
+                    currentBuild.displayName = "[NOOP] - Needs enforcing"
+                } else {
+                    currentBuild.displayName = "Needs enforcing"
+                }
+            } catch (ex) {
+                echo "Firewall is already enforcing"
+                if ( params.DRY_RUN ) {
+                    currentBuild.displayName = "[NOOP] - Already enforcing"
+                } else {
+                    currentBuild.displayName = "Already enforcing"
+                }
+            }
+        } else {
+            echo "This is a 'disable' request, skipping the enforcement check"
+        }
     }
 
-    stage ("Maybe apply") {
-	if ( needApplied && !params.DRY_RUN ) {
-	    echo "Firewall is presently disabled, fix that now"
-	    commonlib.shell(
-		script: "sudo hacks/iptables/buildvm-scripts/canttouchthat.py -n hacks/iptables/buildvm-scripts/known-networks.txt --enforce"
-	    )
-	    reapplied = true
-	} else {
-	    echo "Firewall is already enabled (or this is a dry run), nothing to do"
-	}
+    stage ("Maybe apply/clean") {
+        if ( DISABLE ) {
+            if ( !params.DRY_RUN ) {
+                echo "The firewall will be disabled now"
+                commonlib.shell(
+                    script: "sudo hacks/iptables/buildvm-scripts/canttouchthat.py --clean"
+                )
+                disabled = true
+            } else {
+                echo "The firewall rules would have been cleaned"
+            }
+        } else {
+            if ( needApplied && !params.DRY_RUN ) {
+                echo "Firewall is presently disabled, fix that now"
+                commonlib.shell(
+                    script: "sudo hacks/iptables/buildvm-scripts/canttouchthat.py -n hacks/iptables/buildvm-scripts/known-networks.txt --enforce"
+                )
+                reapplied = true
+            } else {
+                echo "Firewall is already enabled (or this is a dry run), nothing to do"
+            }
+        }
     }
 
     // ######################################################################
     // Notify art team if the rules had to be reapplied AND NO_SLACK is false
     stage ("Notify team of enforcement") {
-	if ( DISABLE && !params.DRY_RUN) {
-	    currentBuild.displayName = "Cleared the rules"
-            slackChannel = slacklib.to(notifyChannel)
-            slackChannel.say(':alert: The firewall rules have been cleared on buildvm :alert:')
-
-
-	if ( reapplied && !params.DRY_RUN ) {
-	    currentBuild.displayName = "Enforced the rules"
-            slackChannel = slacklib.to(notifyChannel)
-            slackChannel.say(':itsfine-fire: The firewall rules have been reapplied to the buildvm :itsfine-fire:')
-	} else {
-	    echo "Skipping slack notification because..."
-	    echo "The rules were already applied, this was a dry run, or you didn't want anyone being notified"
-	}
+        if ( DISABLE ) {
+            if ( disabled && !params.DRY_RUN) {
+                currentBuild.displayName = "Cleared the rules"
+                slackChannel = slacklib.to(notifyChannel)
+                slackChannel.say(':alert: The firewall rules have been cleared on buildvm :alert:')
+            } else {
+                echo "Skipping slack notification because..."
+                echo "The rules would have been cleaned, however, you requested a DRY RUN"
+            }
+        } else {
+            if ( reapplied && !params.DRY_RUN ) {
+                currentBuild.displayName = "Enforced the rules"
+                slackChannel = slacklib.to(notifyChannel)
+                slackChannel.say(':itsfine-fire: The firewall rules have been reapplied to the buildvm :itsfine-fire:')
+            } else {
+                echo "Skipping slack notification because..."
+                echo "The rules were already applied or this was a dry run"
+            }
+        }
     }
 }

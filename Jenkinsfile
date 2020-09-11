@@ -43,14 +43,16 @@ node {
     commonlib.describeJob("enforce-firewall", """
         <h2>Automatically re-enables the firewall</h2><b>Timing</b>: The scheduled job of the same name runs this three times daily.
 
-        Checks if the firewall rules are enforcing. If they are not then they will be reapplied. If the rules are reapplied by
-        this job then a notification will be sent over slack to the <code>#team-art</code> channel.
+        Checks if the firewall rules are enforcing. If they are not then they will be reapplied.
+
+        If the rules are reapplied by this job then a notification will be sent over slack to the <code>#team-art</code> channel.
 
         <h2>Disabling the firewall</h2>This job can also be used to <b>temporarily</b> disable the firewall. Check the <code>DISABLE</code> box on the build
         parameters screen to disable the rules.
 
-        <h2>Parameters</h2>
-        <ul><li><b>DRY_RUN</b> - Only <b>check</b> if the rules are presently enforcing</li><li><b>DISABLE</b> - <b>Temporarily</b> turn off the firewall</li></ul>
+        If the rules are disabled by this job then a notification will be sent over slack to the <code>#team-art</code> channel.
+
+        <h2>Parameters</h2><ul><li><b>DRY_RUN</b> - Only <b>check</b> if the rules are presently enforcing</li><li><b>DISABLE</b> - <b>Temporarily</b> turn off the firewall</li></ul>
     """)
     commonlib.checkMock()
     needApplied = false

@@ -25,8 +25,8 @@ node {
                         defaultValue: false,
                     ],
                     [
-                        name: 'NO_SLACK',
-                        description: "Don't send a notification over slack if the rules had to be reapplied",
+                        name: 'DISABLE',
+                        description: "Temporarily lisable the firewall. The firewall is automatically enforced every 8 hours",
                         $class: 'hudson.model.BooleanParameterDefinition',
                         defaultValue: false,
                     ],
@@ -51,7 +51,7 @@ node {
         Job supports a few parameters:
         <ul>
           <li><b>DRY_RUN</b> - Only <b>check</b> if the rules are presently enforcing</li>
-          <li><b>NO_SLACK</b> - Don't send enforcement notifications out over slack</li>
+          <li><b>DISABLE</b> - Temporarily turn off the firewall</li>
         </ul>
     """)
     commonlib.checkMock()
@@ -99,7 +99,13 @@ node {
     // ######################################################################
     // Notify art team if the rules had to be reapplied AND NO_SLACK is false
     stage ("Notify team of enforcement") {
-	if ( !params.NO_SLACK && reapplied && !params.DRY_RUN ) {
+	if ( DISABLE && !params.DRY_RUN) {
+	    currentBuild.displayName = "Cleared the rules"
+            slackChannel = slacklib.to(notifyChannel)
+            slackChannel.say(':alert: The firewall rules have been cleared on buildvm :alert:')
+
+
+	if ( reapplied && !params.DRY_RUN ) {
 	    currentBuild.displayName = "Enforced the rules"
             slackChannel = slacklib.to(notifyChannel)
             slackChannel.say(':itsfine-fire: The firewall rules have been reapplied to the buildvm :itsfine-fire:')
